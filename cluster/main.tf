@@ -27,7 +27,6 @@ terraform {
 
 data "aws_route53_zone" "selected" {
   name = "hashicorp-success.com."
-  #zone_id = "Z30WCTDR9QHV42"
 }
 
 data "terraform_remote_state" "vpc" {
@@ -40,31 +39,11 @@ data "terraform_remote_state" "vpc" {
   }
 }
 
-
-resource "aws_route53_record" "flamarion" {
-  zone_id = data.aws_route53_zone.selected.id
-  name    = "flamarion.hashicorp-success.com"
-  type    = "A"
-  alias {
-    name                   = aws_lb.flamarion_lb.dns_name
-    zone_id                = aws_lb.flamarion_lb.zone_id
-    evaluate_target_health = true
-  }
-}
-
-# resource "aws_security_group" "lb_sg" {
-#   name        = "${var.tag_prefix}-lb-sg"
-#   description = "Security Group"
-#   vpc_id      = data.terraform_remote_state.vpc.outputs.vpc_id
-#   tags = {
-#     Name = "${var.tag_prefix}-lb-sg"
-#   }
-# }
-
+# Load Balancer Security Group
 module "tfe_lb_sg" {
   source  = "./modules/sg"
   sg_name = "${var.tag_prefix}-lb-sg"
-  sg_desc = "Security Group"
+  sg_desc = "TFE Load Balancer Security Group"
   vpc_id  = data.terraform_remote_state.vpc.outputs.vpc_id
   sg_tags = {
     Name = "${var.tag_prefix}-lb-sg"
@@ -110,88 +89,102 @@ module "tfe_lb_sg" {
   }
 }
 
-# resource "aws_security_group_rule" "lb_tfe_http" {
-#   description       = "Terraform Cloud application via HTTP"
-#   type              = "ingress"
-#   cidr_blocks       = ["0.0.0.0/0"]
-#   from_port         = var.http_port
-#   to_port           = var.http_port
-#   protocol          = "tcp"
-#   security_group_id = aws_security_group.lb_sg.id
-# }
-
-# resource "aws_security_group_rule" "lb_tfe_https" {
-#   description       = "Terraform Cloud application via HTTPS"
-#   type              = "ingress"
-#   cidr_blocks       = ["0.0.0.0/0"]
-#   from_port         = var.https_port
-#   to_port           = var.https_port
-#   protocol          = "tcp"
-#   security_group_id = aws_security_group.lb_sg.id
-# }
-
-# resource "aws_security_group_rule" "replicated_dashboard" {
-#   description       = "Replicated dashboard"
-#   type              = "ingress"
-#   cidr_blocks       = ["0.0.0.0/0"]
-#   from_port         = var.replicated_port
-#   to_port           = var.replicated_port
-#   protocol          = "tcp"
-#   security_group_id = aws_security_group.lb_sg.id
-# }
-
-# resource "aws_security_group_rule" "allow_all_outbound" {
-#   description       = "Allow all outbound" 
-#   type              = "egress"
-#   cidr_blocks       = ["0.0.0.0/0"]
-#   to_port           = 0
-#   protocol          = "-1"
-#   from_port         = 0
-#   security_group_id = aws_security_group.lb_sg.id
-# }
-
-resource "aws_lb" "flamarion_lb" {
-  name               = "${var.tag_prefix}-lb"
-  load_balancer_type = "application"
-  #security_groups    = [aws_security_group.lb_sg.id]
-  security_groups = [module.tfe_lb_sg.sg_id]
-  subnets         = data.terraform_remote_state.vpc.outputs.subnet_ids
-  tags = {
-    Name = "${var.tag_prefix}-lb"
-  }
-}
-
-# Security groups for DB
-
-resource "aws_security_group" "db_sg" {
-  name        = "${var.tag_prefix}-db-sg"
-  description = "Database Security Group"
-  vpc_id      = data.terraform_remote_state.vpc.outputs.vpc_id
-  tags = {
+# DB Cluster Security Group
+module "tfe_db_sg" {
+  source  = "./modules/sg"
+  sg_name = "${var.tag_prefix}-db-sg"
+  sg_desc = "TFE Database Security Group"
+  vpc_id  = data.terraform_remote_state.vpc.outputs.vpc_id
+  sg_tags = {
     Name = "${var.tag_prefix}-db-sg"
   }
+
+  sg_rules_cidr = {
+    postgres = {
+      description = "Allow access from TFE Instances"
+      type        = "ingress"
+      cidr_blocks = data.terraform_remote_state.vpc.outputs.subnets
+      from_port   = module.tfe_db_cluster.port
+      to_port     = module.tfe_db_cluster.port
+      protocol    = "tcp"
+      sg_id       = module.tfe_db_sg.sg_id
+    },
+    outbound = {
+      description = "Allow all outbound traffic"
+      type        = "egress"
+      cidr_blocks = ["0.0.0.0/0"]
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      sg_id       = module.tfe_db_sg.sg_id
+    }
+  }
 }
 
-resource "aws_security_group_rule" "tfe_db_ingress" {
-  description       = "Database security Group"
+# TFE Instances Security Group
+module "tfe_instances_sg" {
+  source  = "./modules/sg"
+  sg_name = "${var.tag_prefix}-sg"
+  sg_desc = "TFE Instances Security Group"
+  vpc_id  = data.terraform_remote_state.vpc.outputs.vpc_id
+  sg_tags = {
+    Name = "${var.tag_prefix}-sg"
+  }
+  source_sgid_rule = "enbled"
+  sg_rules_sgid = {
+    http = {
+      description = "Terraform Cloud application via HTTP"
+      type        = "ingress"
+      source_sgid = module.tfe_lb_sg.sg_id
+      from_port   = var.http_port
+      to_port     = var.http_port
+      protocol    = "tcp"
+      sg_id       = module.tfe_instances_sg.sg_id
+    },
+    https = {
+      description = "Terraform Cloud application via HTTPS"
+      type        = "ingress"
+      source_sgid = module.tfe_lb_sg.sg_id
+      from_port   = var.https_port
+      to_port     = var.https_port
+      protocol    = "tcp"
+      sg_id       = module.tfe_instances_sg.sg_id
+    },
+    replicated = {
+      description = "Replicated dashboard"
+      type        = "ingress"
+      source_sgid = module.tfe_lb_sg.sg_id
+      from_port   = var.replicated_port
+      to_port     = var.replicated_port
+      protocol    = "tcp"
+      sg_id       = module.tfe_instances_sg.sg_id
+    }
+  }
+}
+
+# Extra security group rules for TFE Instances
+
+resource "aws_security_group_rule" "tfe_ssh" {
+  description       = "Allow SSH"
   type              = "ingress"
-  cidr_blocks       = data.terraform_remote_state.vpc.outputs.subnets
-  from_port         = module.tfe_db_cluster.port
-  to_port           = module.tfe_db_cluster.port
+  cidr_blocks       = ["0.0.0.0/0"]
+  from_port         = var.ssh_port
+  to_port           = var.ssh_port
   protocol          = "tcp"
-  security_group_id = aws_security_group.db_sg.id
+  security_group_id = module.tfe_instances_sg.sg_id
 }
 
-resource "aws_security_group_rule" "allow_db_outbound" {
+resource "aws_security_group_rule" "tfe_outbound" {
+  description       = "Outbound traffic is allowed"
   type              = "egress"
   cidr_blocks       = ["0.0.0.0/0"]
-  to_port           = 0
-  protocol          = "-1"
   from_port         = 0
-  security_group_id = aws_security_group.db_sg.id
+  to_port           = 0
+  protocol          = -1
+  security_group_id = module.tfe_instances_sg.sg_id
 }
 
-
+# RDS Postgre Cluster module
 module "tfe_db_cluster" {
   source              = "./modules/db"
   db_engine           = "aurora-postgresql"
@@ -201,7 +194,7 @@ module "tfe_db_cluster" {
   db_user             = "tfe"
   skip_final_snapshot = true
   az_list             = data.terraform_remote_state.vpc.outputs.az
-  sg_id_list          = [aws_security_group.db_sg.id]
+  sg_id_list          = [module.tfe_db_sg.sg_id]
   apply_immediately   = true
   db_subnet_group     = data.terraform_remote_state.vpc.outputs.db_subnet_group
   db_tags = {
@@ -212,35 +205,31 @@ module "tfe_db_cluster" {
   public              = false
 }
 
-# # DB Cluster
-# resource "aws_rds_cluster" "tfe_pgsql" {
-#   engine                 = "aurora-postgresql"
-#   cluster_identifier     = "${var.tag_prefix}-pgsql"
-#   database_name          = "tfe"
-#   master_password        = "SuperS3cure"
-#   master_username        = "tfe"
-#   skip_final_snapshot    = true
-#   availability_zones     = data.terraform_remote_state.vpc.outputs.az
-#   vpc_security_group_ids = [aws_security_group.db_sg.id]
-#   apply_immediately      = true
-#   db_subnet_group_name   = data.terraform_remote_state.vpc.outputs.db_subnet_group
-#   tags = {
-#     Name = "${var.tag_prefix}-pgsql-cluster"
-#   }
-# }
+# Load Balancer (ALB)
+resource "aws_lb" "flamarion_lb" {
+  name               = "${var.tag_prefix}-lb"
+  load_balancer_type = "application"
+  security_groups    = [module.tfe_lb_sg.sg_id]
+  subnets            = data.terraform_remote_state.vpc.outputs.subnet_ids
+  tags = {
+    Name = "${var.tag_prefix}-lb"
+  }
+}
 
-# resource "aws_rds_cluster_instance" "tfe_pgsql_instance" {
-#   identifier           = "${var.tag_prefix}-instance"
-#   cluster_identifier   = aws_rds_cluster.tfe_pgsql.id
-#   engine               = "aurora-postgresql"
-#   instance_class       = "db.t3.medium"
-#   publicly_accessible  = false
-#   db_subnet_group_name = data.terraform_remote_state.vpc.outputs.db_subnet_group
-#   apply_immediately    = true
-# }
+# Route53 DNS Record
+resource "aws_route53_record" "flamarion" {
+  zone_id = data.aws_route53_zone.selected.id
+  name    = "flamarion.hashicorp-success.com"
+  type    = "A"
+  alias {
+    name                   = aws_lb.flamarion_lb.dns_name
+    zone_id                = aws_lb.flamarion_lb.zone_id
+    evaluate_target_health = true
+  }
+}
+
 
 # S3 Bucket
-
 resource "aws_s3_bucket" "tfe_s3" {
   bucket = "${var.tag_prefix}-es"
   acl    = "private"
@@ -302,94 +291,7 @@ resource "aws_key_pair" "tfe_key" {
   public_key = file("~/.ssh/cloud.pub")
 }
 
-# Instance SG
-resource "aws_security_group" "tfe_sg" {
-  name        = "${var.tag_prefix}-sg"
-  description = "Security Group"
-  vpc_id      = data.terraform_remote_state.vpc.outputs.vpc_id
-  tags = {
-    Name = "${var.tag_prefix}-sg"
-  }
-}
-
-# Ingress
-# var.ssh_port: To access the instance via SSH from your computer. SSH access to the instance is required for administration and debugging.
-# 80: To access the Terraform Cloud application via HTTP. This port redirects to port var.https_port for HTTPS.
-# var.https_port: To access the Terraform Cloud application via HTTPS.
-# var.replicated_port: To access the installer dashboard.
-# 9870-9880 (inclusive): For internal communication on the host and its subnet; not publicly accessible.
-# 23000-23100 (inclusive): For internal communication on the host and its subnet; not publicly accessible.
-
-resource "aws_security_group_rule" "tfe_ssh" {
-  description       = "Allow SSH"
-  type              = "ingress"
-  cidr_blocks       = ["0.0.0.0/0"]
-  from_port         = var.ssh_port
-  to_port           = var.ssh_port
-  protocol          = "tcp"
-  security_group_id = aws_security_group.tfe_sg.id
-}
-
-resource "aws_security_group_rule" "tfe_http" {
-  description              = "Terraform Cloud application via HTTP"
-  type                     = "ingress"
-  source_security_group_id = module.tfe_lb_sg.sg_id
-  from_port                = var.http_port
-  to_port                  = var.http_port
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.tfe_sg.id
-}
-
-resource "aws_security_group_rule" "tfe_https" {
-  description              = "Terraform Cloud application via HTTPS"
-  type                     = "ingress"
-  source_security_group_id = module.tfe_lb_sg.sg_id
-  from_port                = var.https_port
-  to_port                  = var.https_port
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.tfe_sg.id
-}
-
-resource "aws_security_group_rule" "tfe_installer" {
-  description              = "access the installer dashboard"
-  type                     = "ingress"
-  source_security_group_id = module.tfe_lb_sg.sg_id
-  from_port                = var.replicated_port
-  to_port                  = var.replicated_port
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.tfe_sg.id
-}
-
-resource "aws_security_group_rule" "tfe_internal_1" {
-  description       = "TFE Internal Communication"
-  type              = "ingress"
-  cidr_blocks       = data.terraform_remote_state.vpc.outputs.subnets
-  from_port         = 9870
-  to_port           = 9880
-  protocol          = "tcp"
-  security_group_id = aws_security_group.tfe_sg.id
-}
-
-resource "aws_security_group_rule" "tfe_internal_2" {
-  description       = "TFE Internal Communication"
-  type              = "ingress"
-  cidr_blocks       = data.terraform_remote_state.vpc.outputs.subnets
-  from_port         = 23000
-  to_port           = 23100
-  protocol          = "tcp"
-  security_group_id = aws_security_group.tfe_sg.id
-}
-
-resource "aws_security_group_rule" "tfe_outbound" {
-  description       = "Outbound traffic is allowed"
-  type              = "egress"
-  cidr_blocks       = ["0.0.0.0/0"]
-  from_port         = 0
-  to_port           = 0
-  protocol          = -1
-  security_group_id = aws_security_group.tfe_sg.id
-}
-
+# Script to boot strap TFE Installation
 data "template_file" "userdata" {
   template = file("templates/userdata.tpl")
 
@@ -405,14 +307,13 @@ data "template_file" "userdata" {
 }
 
 # Launch configuration 
-
 resource "aws_launch_configuration" "tfe_instances" {
   name                        = "${var.tag_prefix}-lc"
   image_id                    = var.image_id
   instance_type               = "m5.large"
   iam_instance_profile        = aws_iam_instance_profile.tfe_instance_profile.name
   key_name                    = aws_key_pair.tfe_key.key_name
-  security_groups             = [aws_security_group.tfe_sg.id]
+  security_groups             = [module.tfe_instances_sg.sg_id]
   associate_public_ip_address = true
   user_data                   = data.template_file.userdata.rendered
   root_block_device {
@@ -424,15 +325,7 @@ resource "aws_launch_configuration" "tfe_instances" {
   }
 }
 
-locals {
-  tfe_port_list = {
-    "${var.https_port}"      = "HTTPS",
-    "${var.replicated_port}" = "HTTPS"
-  }
-}
-
 # Auto Scaling Group
-
 resource "aws_autoscaling_group" "tfe_asg" {
   name                 = "${var.tag_prefix}-asg-"
   max_size             = 1
@@ -453,6 +346,7 @@ resource "aws_autoscaling_group" "tfe_asg" {
   }
 }
 
+# TFE LB Target groups
 resource "aws_lb_target_group" "tfe_lb_tg_https" {
   name                 = "${var.tag_prefix}-tg-${var.https_port}"
   port                 = var.https_port
@@ -507,13 +401,14 @@ resource "aws_lb_target_group" "tfe_lb_tg_http" {
   }
 }
 
-
+# HashiCorp wildcard certificate
 data "aws_acm_certificate" "hashicorp_success" {
   domain      = "*.hashicorp-success.com"
   types       = ["AMAZON_ISSUED"]
   most_recent = true
 }
 
+# LB Listeners
 resource "aws_lb_listener" "tfe_listener_https" {
   load_balancer_arn = aws_lb.flamarion_lb.arn
   port              = var.https_port
@@ -521,7 +416,6 @@ resource "aws_lb_listener" "tfe_listener_https" {
   certificate_arn   = data.aws_acm_certificate.hashicorp_success.arn
   ssl_policy        = "ELBSecurityPolicy-2016-08"
 
-  # By default, return a simple 404 page
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.tfe_lb_tg_https.arn
@@ -535,7 +429,6 @@ resource "aws_lb_listener" "tfe_listener_https_replicated" {
   certificate_arn   = data.aws_acm_certificate.hashicorp_success.arn
   ssl_policy        = "ELBSecurityPolicy-2016-08"
 
-  # By default, return a simple 404 page
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.tfe_lb_tg_https_replicated.arn
@@ -547,14 +440,13 @@ resource "aws_lb_listener" "tfe_listener_http" {
   port              = var.http_port
   protocol          = "HTTP"
 
-  # By default, return a simple 404 page
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.tfe_lb_tg_http.arn
   }
 }
 
-
+# LB Listener Rules
 resource "aws_lb_listener_rule" "asg_https" {
   listener_arn = aws_lb_listener.tfe_listener_https.arn
   priority     = 100
