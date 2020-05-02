@@ -205,30 +205,6 @@ module "tfe_db_cluster" {
   public              = false
 }
 
-# Load Balancer (ALB)
-resource "aws_lb" "flamarion_lb" {
-  name               = "${var.tag_prefix}-lb"
-  load_balancer_type = "application"
-  security_groups    = [module.tfe_lb_sg.sg_id]
-  subnets            = data.terraform_remote_state.vpc.outputs.subnet_ids
-  tags = {
-    Name = "${var.tag_prefix}-lb"
-  }
-}
-
-# Route53 DNS Record
-resource "aws_route53_record" "flamarion" {
-  zone_id = data.aws_route53_zone.selected.id
-  name    = "flamarion.hashicorp-success.com"
-  type    = "A"
-  alias {
-    name                   = aws_lb.flamarion_lb.dns_name
-    zone_id                = aws_lb.flamarion_lb.zone_id
-    evaluate_target_health = true
-  }
-}
-
-
 # S3 Bucket
 resource "aws_s3_bucket" "tfe_s3" {
   bucket = "${var.tag_prefix}-es"
@@ -346,7 +322,54 @@ resource "aws_autoscaling_group" "tfe_asg" {
   }
 }
 
-# TFE LB Target groups
+# TFE Load Balancer Module
+# module tfe_lb {
+#   source = "./modules/lb"
+
+#   lb_name    = "${var.tag_prefix}-lb"
+#   lb_type    = "application"
+#   lb_sg      = [module.tfe_lb_sg.sg_id]
+#   lb_subnets = data.terraform_remote_state.vpc.outputs.subnet_ids
+#   lb_tags = {
+#     Name = "${var.tag_prefix}-lb"
+#   }
+
+#   target_groups = [
+#     {
+#       tg_name = "${var.tag_prefix}-tg-${var.https_port}"
+#       tg_port = var.https_port
+#       tg_protocol = "HTTPS"
+#       tg_vpc_id = data.terraform_remote_state.vpc.outputs.vpc_id
+#       tg_dereg_delay = 60
+#       tg_slow_start = 300
+#       health_check  = {
+#         path                = "/_health_check"
+#         protocol            = "HTTPS"
+#         matcher             = "200"
+#         interval            = 30
+#         timeout             = 20
+#         healthy_threshold   = 2
+#         unhealthy_threshold = 10
+#       }
+#       tg_tags = {
+#         Name = "${var.tag_prefix}-tg-${var.https_port}"
+#       }
+#     }
+#   ]
+# }
+
+# # Load Balancer (ALB)
+resource "aws_lb" "flamarion_lb" {
+  name               = "${var.tag_prefix}-lb"
+  load_balancer_type = "application"
+  security_groups    = [module.tfe_lb_sg.sg_id]
+  subnets            = data.terraform_remote_state.vpc.outputs.subnet_ids
+  tags = {
+    Name = "${var.tag_prefix}-lb"
+  }
+}
+
+# # TFE LB Target groups
 resource "aws_lb_target_group" "tfe_lb_tg_https" {
   name                 = "${var.tag_prefix}-tg-${var.https_port}"
   port                 = var.https_port
@@ -463,36 +486,46 @@ resource "aws_lb_listener_rule" "asg_https" {
   }
 }
 
-resource "aws_lb_listener_rule" "asg_https_replicated" {
-  listener_arn = aws_lb_listener.tfe_listener_https_replicated.arn
-  priority     = 101
+# resource "aws_lb_listener_rule" "asg_https_replicated" {
+#   listener_arn = aws_lb_listener.tfe_listener_https_replicated.arn
+#   priority     = 101
 
-  condition {
-    path_pattern {
-      values = ["*"]
-    }
-  }
+#   condition {
+#     path_pattern {
+#       values = ["*"]
+#     }
+#   }
 
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.tfe_lb_tg_https_replicated.arn
+#   action {
+#     type             = "forward"
+#     target_group_arn = aws_lb_target_group.tfe_lb_tg_https_replicated.arn
+#   }
+# }
+
+# resource "aws_lb_listener_rule" "asg_http" {
+#   listener_arn = aws_lb_listener.tfe_listener_http.arn
+#   priority     = 102
+
+#   condition {
+#     path_pattern {
+#       values = ["*"]
+#     }
+#   }
+
+#   action {
+#     type             = "forward"
+#     target_group_arn = aws_lb_target_group.tfe_lb_tg_http.arn
+#   }
+# }
+
+# Route53 DNS Record
+resource "aws_route53_record" "flamarion" {
+  zone_id = data.aws_route53_zone.selected.id
+  name    = "flamarion.hashicorp-success.com"
+  type    = "A"
+  alias {
+    name                   = aws_lb.flamarion_lb.dns_name
+    zone_id                = aws_lb.flamarion_lb.zone_id
+    evaluate_target_health = true
   }
 }
-
-resource "aws_lb_listener_rule" "asg_http" {
-  listener_arn = aws_lb_listener.tfe_listener_http.arn
-  priority     = 102
-
-  condition {
-    path_pattern {
-      values = ["*"]
-    }
-  }
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.tfe_lb_tg_http.arn
-  }
-}
-
-
