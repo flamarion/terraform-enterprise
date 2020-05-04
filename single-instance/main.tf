@@ -173,16 +173,16 @@ resource "aws_instance" "tfe" {
     }
   }
 
-  provisioner "file" {
-    source      = "conf/hashicorp-emea-support.rli"
-    destination = "/var/tmp/license.rli"
-    connection {
-      type        = "ssh"
-      user        = "ubuntu"
-      private_key = file("~/.ssh/cloud")
-      host        = self.public_dns
-    }
-  }
+  # provisioner "file" {
+  #   source      = "conf/hashicorp-emea-support.rli"
+  #   destination = "/var/tmp/license.rli"
+  #   connection {
+  #     type        = "ssh"
+  #     user        = "ubuntu"
+  #     private_key = file("~/.ssh/cloud")
+  #     host        = self.public_dns
+  #   }
+  # }
 
   provisioner "file" {
     source      = "conf/certs/localhost.crt"
@@ -211,6 +211,29 @@ resource "aws_instance" "tfe" {
 
 }
 
+# resource "null_resource" "tfe_bootstrap" {
+
+#   triggers = {
+#     instance = aws_route53_record.flamarion.id
+#   }
+
+#   provisioner "remote-exec" {
+#     inline = ["sudo mv /var/tmp/settings.json /var/tmp/replicated.conf /var/tmp/license.rli /var/tmp/localhost.crt /var/tmp/localhost.key /etc/",
+#       "sudo chmod 644 /etc/replicated.conf /etc/settings.conf",
+#       "curl -o install.sh https://install.terraform.io/ptfe/stable",
+#       "sudo bash ./install.sh no-proxy private-address=${aws_instance.tfe.private_ip} public-address=${aws_instance.tfe.public_ip}",
+#       "while ! curl -ksfS --connect-timeout 5 https://${aws_route53_record.flamarion.fqdn}/_health_check; do sleep 5; done"
+#     ]
+#     connection {
+#       type        = "ssh"
+#       user        = "ubuntu"
+#       private_key = file("~/.ssh/cloud")
+#       host        = aws_route53_record.flamarion.fqdn
+#     }
+#   }
+# }
+
+
 resource "null_resource" "tfe_bootstrap" {
 
   triggers = {
@@ -218,7 +241,7 @@ resource "null_resource" "tfe_bootstrap" {
   }
 
   provisioner "remote-exec" {
-    inline = ["sudo mv /var/tmp/settings.json /var/tmp/replicated.conf /var/tmp/license.rli /var/tmp/localhost.crt /var/tmp/localhost.key /etc/",
+    inline = ["sudo mv /var/tmp/settings.json /var/tmp/replicated.conf /var/tmp/localhost.crt /var/tmp/localhost.key /etc/",
       "sudo chmod 644 /etc/replicated.conf /etc/settings.conf",
       "curl -o install.sh https://install.terraform.io/ptfe/stable",
       "sudo bash ./install.sh no-proxy private-address=${aws_instance.tfe.private_ip} public-address=${aws_instance.tfe.public_ip}",
@@ -234,14 +257,14 @@ resource "null_resource" "tfe_bootstrap" {
 }
 
 
+
 data "aws_route53_zone" "selected" {
   name = "hashicorp-success.com."
-  # zone_id = "Z30WCTDR9QHV42"
 }
 
 resource "aws_route53_record" "flamarion" {
   zone_id = data.aws_route53_zone.selected.id
-  name    = "flamarion.hashicorp-success.com"
+  name    = "flamarion-single.hashicorp-success.com"
   type    = "CNAME"
   ttl     = "5"
   records = [aws_instance.tfe.public_dns]
