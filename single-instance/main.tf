@@ -279,19 +279,19 @@ resource "aws_lb_listener_rule" "asg_http" {
 
 resource "aws_lb_target_group_attachment" "http_port" {
   target_group_arn = aws_lb_target_group.tfe_lb_tg_http.arn
-  target_id        = aws_instance.tfe.id
+  target_id        = aws_instance.tfe_instance.id
   port             = var.http_port
 }
 
 resource "aws_lb_target_group_attachment" "https_port" {
   target_group_arn = aws_lb_target_group.tfe_lb_tg_https.arn
-  target_id        = aws_instance.tfe.id
+  target_id        = aws_instance.tfe_instance.id
   port             = var.https_port
 }
 
 resource "aws_lb_target_group_attachment" "replicated_port" {
   target_group_arn = aws_lb_target_group.tfe_lb_tg_https_replicated.arn
-  target_id        = aws_instance.tfe.id
+  target_id        = aws_instance.tfe_instance.id
   port             = var.replicated_port
 }
 
