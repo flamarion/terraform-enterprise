@@ -37,3 +37,7 @@ variable "replicated_port" {
   type = number
   default = 8800
 }
+
+variable "tfe_admin_password" {
+  type = string
+}

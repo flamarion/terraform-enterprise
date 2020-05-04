@@ -29,7 +29,7 @@ cat > /etc/settings.json <<EOF
     "value": "1"
   },
   "enc_password": {
-    "value": "SuperS3cret"
+    "value": "${admin_password}"
   },
   "extern_vault_addr": {},
   "extern_vault_enable": {

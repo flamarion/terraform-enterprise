@@ -97,6 +97,9 @@ resource "aws_security_group_rule" "tfe_outbound" {
 
 data "template_file" "config_files" {
   template = file("templates/userdata.tpl")
+  vars = {
+    admin_password = var.tfe_admin_password
+  }
 }
 
 
