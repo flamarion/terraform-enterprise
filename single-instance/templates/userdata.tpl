@@ -28,7 +28,7 @@ cat > /etc/settings.json <<EOF
   "enable_metrics_collection": {
     "value": "1"
   },
-  "enc_password":
+  "enc_password": {
     "value": "${admin_password}"
   },
   "extern_vault_addr": {},
@@ -47,7 +47,7 @@ cat > /etc/settings.json <<EOF
   },
   "gcs_project": {},
   "hostname": {
-    "value": "flamarion-demo.hashicorp-success.com"
+    "value": "flamarion.hashicorp-success.com"
   },
   "iact_subnet_list": {},
   "iact_subnet_time_limit": {
