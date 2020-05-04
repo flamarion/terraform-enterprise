@@ -28,7 +28,7 @@ cat > /etc/settings.json <<EOF
   "enable_metrics_collection": {
     "value": "1"
   },
-  "enc_password": {
+  "enc_password":
     "value": "${admin_password}"
   },
   "extern_vault_addr": {},

@@ -103,7 +103,7 @@ data "template_file" "config_files" {
 }
 
 
-resource "aws_instance" "tfe" {
+resource "aws_instance" "tfe_instance" {
   ami                    = var.image_id
   subnet_id              = data.terraform_remote_state.vpc.outputs.subnet_ids[0]
   instance_type          = "m5.large"
