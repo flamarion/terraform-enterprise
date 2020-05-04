@@ -47,7 +47,7 @@ cat > /etc/settings.json <<EOF
   },
   "gcs_project": {},
   "hostname": {
-    "value": "flamarion.hashicorp-success.com"
+    "value": "flamarion-demo.hashicorp-success.com"
   },
   "iact_subnet_list": {},
   "iact_subnet_time_limit": {
