@@ -16,3 +16,24 @@ variable "special_tags" {
     "test:author" = "some value"
   }
 }
+
+variable "image_id" {
+  description = "AMI id"
+  type        = string
+  default     = "ami-01f629e0600d93cef"
+}
+
+variable "http_port" {
+  type = number
+  default = 80
+}
+
+variable "https_port" {
+  type = number
+  default = 443
+}
+
+variable "replicated_port" {
+  type = number
+  default = 8800
+}

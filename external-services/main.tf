@@ -369,7 +369,7 @@ resource "aws_lb" "flamarion_lb" {
   }
 }
 
-# # TFE LB Target groups
+# TFE LB Target groups
 resource "aws_lb_target_group" "tfe_lb_tg_https" {
   name                 = "${var.tag_prefix}-tg-${var.https_port}"
   port                 = var.https_port
@@ -486,37 +486,37 @@ resource "aws_lb_listener_rule" "asg_https" {
   }
 }
 
-# resource "aws_lb_listener_rule" "asg_https_replicated" {
-#   listener_arn = aws_lb_listener.tfe_listener_https_replicated.arn
-#   priority     = 101
+resource "aws_lb_listener_rule" "asg_https_replicated" {
+  listener_arn = aws_lb_listener.tfe_listener_https_replicated.arn
+  priority     = 101
 
-#   condition {
-#     path_pattern {
-#       values = ["*"]
-#     }
-#   }
+  condition {
+    path_pattern {
+      values = ["*"]
+    }
+  }
 
-#   action {
-#     type             = "forward"
-#     target_group_arn = aws_lb_target_group.tfe_lb_tg_https_replicated.arn
-#   }
-# }
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.tfe_lb_tg_https_replicated.arn
+  }
+}
 
-# resource "aws_lb_listener_rule" "asg_http" {
-#   listener_arn = aws_lb_listener.tfe_listener_http.arn
-#   priority     = 102
+resource "aws_lb_listener_rule" "asg_http" {
+  listener_arn = aws_lb_listener.tfe_listener_http.arn
+  priority     = 102
 
-#   condition {
-#     path_pattern {
-#       values = ["*"]
-#     }
-#   }
+  condition {
+    path_pattern {
+      values = ["*"]
+    }
+  }
 
-#   action {
-#     type             = "forward"
-#     target_group_arn = aws_lb_target_group.tfe_lb_tg_http.arn
-#   }
-# }
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.tfe_lb_tg_http.arn
+  }
+}
 
 # Route53 DNS Record
 resource "aws_route53_record" "flamarion" {

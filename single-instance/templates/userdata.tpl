@@ -1,3 +1,6 @@
+#!/usr/bin/env bash 
+
+cat > /etc/settings.json <<EOF
 {
   "aws_access_key_id": {},
   "aws_instance_profile": {
@@ -44,7 +47,7 @@
   },
   "gcs_project": {},
   "hostname": {
-    "value": "flamarion.hashicorp-success.com"
+    "value": "flamarion-demo.hashicorp-success.com"
   },
   "iact_subnet_list": {},
   "iact_subnet_time_limit": {
@@ -74,3 +77,8 @@
     "value": "tls_1_2_tls_1_3"
   }
 }
+EOF
+
+curl -o /tmp/install.sh https://install.terraform.io/ptfe/stable
+chmod +x /tmp/install.sh
+/tmp/install.sh no-proxy private-address=$(curl http://169.254.169.254/latest/meta-data/local-ipv4) public-address=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)
