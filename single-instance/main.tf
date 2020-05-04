@@ -56,8 +56,8 @@ resource "aws_security_group_rule" "tfe_http" {
   description       = "Terraform Cloud application via HTTP"
   type              = "ingress"
   cidr_blocks       = ["0.0.0.0/0"]
-  from_port         = 80
-  to_port           = 80
+  from_port         = var.http_port
+  to_port           = var.http_port
   protocol          = "tcp"
   security_group_id = aws_security_group.tfe_sg.id
 }
@@ -66,11 +66,22 @@ resource "aws_security_group_rule" "tfe_https" {
   description       = "Terraform Cloud application via HTTPS"
   type              = "ingress"
   cidr_blocks       = ["0.0.0.0/0"]
-  from_port         = 443
-  to_port           = 443
+  from_port         = var.https_port
+  to_port           = var.https_port
   protocol          = "tcp"
   security_group_id = aws_security_group.tfe_sg.id
 }
+
+resource "aws_security_group_rule" "tfe_replicated_https" {
+  description       = "Replicated Dashboard"
+  type              = "ingress"
+  cidr_blocks       = ["0.0.0.0/0"]
+  from_port         = var.replicated_port
+  to_port           = var.replicated_port
+  protocol          = "tcp"
+  security_group_id = aws_security_group.tfe_sg.id
+}
+
 
 
 resource "aws_security_group_rule" "tfe_outbound" {
@@ -266,19 +277,19 @@ resource "aws_lb_listener_rule" "asg_http" {
 resource "aws_lb_target_group_attachment" "http_port" {
   target_group_arn = aws_lb_target_group.tfe_lb_tg_http.arn
   target_id        = aws_instance.tfe.id
-  port             = 80
+  port             = var.http_port
 }
 
 resource "aws_lb_target_group_attachment" "https_port" {
   target_group_arn = aws_lb_target_group.tfe_lb_tg_https.arn
   target_id        = aws_instance.tfe.id
-  port             = 443
+  port             = var.https_port
 }
 
 resource "aws_lb_target_group_attachment" "replicated_port" {
   target_group_arn = aws_lb_target_group.tfe_lb_tg_https_replicated.arn
   target_id        = aws_instance.tfe.id
-  port             = 8800
+  port             = var.replicated_port
 }
 
 
