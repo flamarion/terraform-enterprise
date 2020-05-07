@@ -102,6 +102,10 @@ data "template_file" "config_files" {
   }
 }
 
+variable "my_var" {
+  description = "Variable with multiple values defined in Terraform Enterprise"
+  type = any
+}
 
 resource "aws_instance" "tfe_instance" {
   ami                    = var.image_id
@@ -112,6 +116,11 @@ resource "aws_instance" "tfe_instance" {
   user_data              = data.template_file.config_files.rendered
   root_block_device {
     volume_size = 100
+  }
+
+  provisioiner "file" {
+    content = var.my_var
+    destination = "/var/tmp/my_creds.txt"
   }
 
   tags = merge(var.special_tags, { Name = "${var.tag_prefix}-instance" })
