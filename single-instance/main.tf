@@ -102,14 +102,9 @@ data "template_file" "config_files" {
   }
 }
 
-variable "user" {
-  description = "User variable defined in TFE"
-  type = string
-}
-
-variable "pass" {
-  description = "Pass variable defined in TFE"
-  type = string
+variable "my_credentials" {
+  description = "Credentials variable defined in TFE"
+  type = any
 }
 
 resource "aws_instance" "tfe_instance" {
@@ -124,7 +119,7 @@ resource "aws_instance" "tfe_instance" {
   }
 
   provisioiner "file" {
-    content = "username  = ${var.user}\npassword = ${pass}"
+    content = var.my_credentials
     destination = "/var/tmp/my_creds.txt"
   }
 
