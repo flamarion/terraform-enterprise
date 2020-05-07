@@ -107,6 +107,10 @@ variable "my_credentials" {
   type = any
 }
 
+variable "private_key" {
+  description = "SSH Private Key"
+}
+
 resource "aws_instance" "tfe_instance" {
   ami                    = var.image_id
   subnet_id              = data.terraform_remote_state.vpc.outputs.subnet_ids[0]
@@ -115,16 +119,21 @@ resource "aws_instance" "tfe_instance" {
   vpc_security_group_ids = [aws_security_group.tfe_sg.id]
   user_data              = data.template_file.config_files.rendered
   root_block_device {
-    volume_size = 100
-  }
-
-  provisioiner "file" {
-    content = var.my_credentials
-    destination = "/var/tmp/my_creds.txt"
+    volume_size = 100∏
   }
 
   tags = merge(var.special_tags, { Name = "${var.tag_prefix}-instance" })
 
+  provisioner "file" {
+    content = var.my_credentials
+    destination = "/var/tmp/my_creds.txt"
+    connection {
+      host = self.public_ip
+      type = "ssh"
+      user = "ubuntu"
+      private_key = var.private_key
+    }
+  }
 }
 
 resource "aws_lb" "flamarion_lb" {
