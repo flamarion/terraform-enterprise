@@ -25,8 +25,8 @@ resource "aws_vpc" "tfe_vpc" {
 }
 
 resource "aws_eip" "tfe_eip" {
-  # count = length(var.private_subnets)
-  vpc = true
+  count = var.enable_nat_gateway ? 1 : 0
+  vpc   = true
   tags = merge(
     var.eip_tags,
     {
@@ -90,9 +90,9 @@ resource "aws_db_subnet_group" "tfe_db_subnet_group" {
 }
 
 resource "aws_nat_gateway" "tfe_nat_gw" {
-  count         = var.enable_nat_gateway ? 1 : 0
-  allocation_id = aws_eip.tfe_eip.id
-  subnet_id     = aws_subnet.tfe_private[count.index].id
+  count         = var.enable_nat_gateway && length(var.private_subnets) > 0 ? 1 : 0
+  allocation_id = aws_eip.tfe_eip[0].id
+  subnet_id     = aws_subnet.tfe_private[0].id
   tags = merge(
     var.nat_gw_tags,
     {
@@ -124,6 +124,7 @@ resource "aws_route_table" "tfe_public_rt" {
 }
 
 resource "aws_route_table" "tfe_private_rt" {
+  count  = length(var.private_subnets) > 0 ? 1 : 0
   vpc_id = aws_vpc.tfe_vpc.id
   tags = {
     Name = "${var.tag_prefix}-private-route-table"
@@ -131,6 +132,7 @@ resource "aws_route_table" "tfe_private_rt" {
 }
 
 resource "aws_route_table" "tfe_db_rt" {
+  count  = length(var.database_subnets) > 0 ? 1 : 0
   vpc_id = aws_vpc.tfe_vpc.id
   tags = {
     Name = "${var.tag_prefix}-private-route-table"
@@ -144,19 +146,18 @@ resource "aws_route" "tfe_public_route" {
 }
 
 resource "aws_route" "tfe_private_route" {
-  count                  = var.enable_nat_gateway ? 1 : 0
-  route_table_id         = aws_route_table.tfe_private_rt.id
+  count                  = var.enable_nat_gateway && length(var.private_subnets) > 0 ? 1 : 0
+  route_table_id         = aws_route_table.tfe_private_rt[count.index].id
   destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = aws_nat_gateway.tfe_nat_gw[count.index].id
+  nat_gateway_id         = aws_nat_gateway.tfe_nat_gw[count.index].id
 }
 
 resource "aws_route" "tfe_db_route" {
-  count                  = var.enable_nat_gateway ? 1 : 0
-  route_table_id         = aws_route_table.tfe_db_rt.id
+  count                  = var.enable_nat_gateway && length(var.database_subnets) > 0 ? 1 : 0
+  route_table_id         = aws_route_table.tfe_db_rt[count.index].id
   destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = aws_nat_gateway.tfe_nat_gw[count.index].id
+  nat_gateway_id         = aws_nat_gateway.tfe_nat_gw[count.index].id
 }
-
 
 resource "aws_route_table_association" "tfe_public_rta" {
   count          = length(var.public_subnets)
@@ -164,15 +165,14 @@ resource "aws_route_table_association" "tfe_public_rta" {
   route_table_id = aws_route_table.tfe_public_rt.id
 }
 
-
 resource "aws_route_table_association" "tfe_private_rta" {
-  count          = var.enable_nat_gateway ? length(var.private_subnets) : 0
+  count          = var.enable_nat_gateway && length(var.private_subnets) > 0 ? length(var.private_subnets) : 0
   subnet_id      = aws_subnet.tfe_private[count.index].id
-  route_table_id = aws_route_table.tfe_private_rt.id
+  route_table_id = aws_route_table.tfe_private_rt[0].id
 }
 
 resource "aws_route_table_association" "tfe_db_rta" {
-  count          = var.enable_nat_gateway ? length(var.database_subnets) : 0 
+  count          = var.enable_nat_gateway && length(var.database_subnets) > 0 ? length(var.database_subnets) : 0
   subnet_id      = aws_subnet.tfe_database[count.index].id
-  route_table_id = aws_route_table.tfe_db_rt.id
+  route_table_id = aws_route_table.tfe_db_rt[0].id
 }
