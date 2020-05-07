@@ -104,7 +104,7 @@ data "template_file" "config_files" {
 
 variable "my_credentials" {
   description = "Credentials variable defined in TFE"
-  type = any
+  type        = any
 }
 
 variable "private_key" {
@@ -119,18 +119,18 @@ resource "aws_instance" "tfe_instance" {
   vpc_security_group_ids = [aws_security_group.tfe_sg.id]
   user_data              = data.template_file.config_files.rendered
   root_block_device {
-    volume_size = 100∏
+    volume_size = 100
   }
 
   tags = merge(var.special_tags, { Name = "${var.tag_prefix}-instance" })
 
   provisioner "file" {
-    content = var.my_credentials
+    content     = var.my_credentials
     destination = "/var/tmp/my_creds.txt"
     connection {
-      host = self.public_ip
-      type = "ssh"
-      user = "ubuntu"
+      host        = self.public_ip
+      type        = "ssh"
+      user        = "ubuntu"
       private_key = var.private_key
     }
   }
