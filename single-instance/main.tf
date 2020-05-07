@@ -105,21 +105,23 @@ data "template_file" "config_files" {
 
 variable "private_key" {
   description = "SSH Private Key"
-  type        = "string"
-  default     = ""
-}
-
-variable "user" {
-  description = "Credentials variable defined in TFE"
   type        = string
   default     = ""
 }
 
-variable "pass" {
-  description = "Credentials variable defined in TFE"
-  type        = string
-  default     = ""
-}
+# variable "user" {
+#   description = "Credentials variable defined in TFE"
+#   type        = string
+#   #default     = ""
+# }
+
+# variable "pass" {
+#   description = "Credentials variable defined in TFE"
+#   type        = string
+#   #default     = ""
+# }
+
+variable "my_credentials" {}
 
 
 
@@ -137,7 +139,8 @@ resource "aws_instance" "tfe_instance" {
   tags = merge(var.special_tags, { Name = "${var.tag_prefix}-instance" })
 
   provisioner "file" {
-    content     = "${var.user}=${var.pass}"
+    # content     = "${var.user}=${var.pass}"
+    content = var.my_credentials
     destination = "/var/tmp/my_creds.txt"
     connection {
       host        = self.public_ip
