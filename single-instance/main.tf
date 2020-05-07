@@ -109,7 +109,7 @@ variable "private_key" {
   default     = ""
 }
 
-variable "file_creds" {
+variable "my_creds" {
   description = "Credentials variable defined in TFE"
   type        = string
   #default     = ""
@@ -138,6 +138,7 @@ resource "aws_instance" "tfe_instance" {
 
   provisioner "file" {
     content     = var.file_creds
+    destination = "/var/tmp/creds.txt"
     connection {
       host        = self.public_ip
       type        = "ssh"
