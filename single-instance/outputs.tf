@@ -7,5 +7,5 @@ output "public_access" {
 }
 
 output "file_content" {
-  value = var.my_creds
+  value = var.file_creds
 }

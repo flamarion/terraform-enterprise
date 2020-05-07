@@ -109,19 +109,11 @@ variable "private_key" {
   default     = ""
 }
 
-variable "my_creds" {
+variable "file_creds" {
   description = "Credentials variable defined in TFE"
   type        = string
-  #default     = ""
+  default     = ""
 }
-
-# variable "mypass" {
-#   description = "Credentials variable defined in TFE"
-#   type        = string
-#   #default     = ""
-# }
-
-
 
 resource "aws_instance" "tfe_instance" {
   ami                    = var.image_id
