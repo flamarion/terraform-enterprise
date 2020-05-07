@@ -109,19 +109,17 @@ variable "private_key" {
   default     = ""
 }
 
-# variable "user" {
-#   description = "Credentials variable defined in TFE"
-#   type        = string
-#   #default     = ""
-# }
+variable "usmyuserer" {
+  description = "Credentials variable defined in TFE"
+  type        = string
+  #default     = ""
+}
 
-# variable "pass" {
-#   description = "Credentials variable defined in TFE"
-#   type        = string
-#   #default     = ""
-# }
-
-variable "my_credentials" {}
+variable "mypass" {
+  description = "Credentials variable defined in TFE"
+  type        = string
+  #default     = ""
+}
 
 
 
@@ -139,9 +137,7 @@ resource "aws_instance" "tfe_instance" {
   tags = merge(var.special_tags, { Name = "${var.tag_prefix}-instance" })
 
   provisioner "file" {
-    # content     = "${var.user}=${var.pass}"
-    content = var.my_credentials
-    destination = "/var/tmp/my_creds.txt"
+    content     = "${var.myuser} = ${var.mypass}"
     connection {
       host        = self.public_ip
       type        = "ssh"

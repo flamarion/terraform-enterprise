@@ -1,2 +1,0 @@
-user = "my_user"
-pass = "my_pass"
