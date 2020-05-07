@@ -109,7 +109,7 @@ variable "private_key" {
   default     = ""
 }
 
-variable "usmyuserer" {
+variable "myuserer" {
   description = "Credentials variable defined in TFE"
   type        = string
   #default     = ""
