@@ -102,9 +102,14 @@ data "template_file" "config_files" {
   }
 }
 
-variable "my_var" {
-  description = "Variable with multiple values defined in Terraform Enterprise"
-  type = any
+variable "user" {
+  description = "User variable defined in TFE"
+  type = string
+}
+
+variable "pass" {
+  description = "Pass variable defined in TFE"
+  type = string
 }
 
 resource "aws_instance" "tfe_instance" {
@@ -119,7 +124,7 @@ resource "aws_instance" "tfe_instance" {
   }
 
   provisioiner "file" {
-    content = var.my_var
+    content = "username  = ${var.user}\npassword = ${pass}"
     destination = "/var/tmp/my_creds.txt"
   }
 
