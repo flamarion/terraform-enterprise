@@ -5,7 +5,3 @@ output "public_access" {
     aws_route53_record.flamarion.fqdn
   ]
 }
-
-output "file_content" {
-  value = var.file_creds
-}

@@ -30,7 +30,7 @@ data "terraform_remote_state" "vpc" {
 
 resource "aws_key_pair" "tfe_key" {
   key_name   = "flamarion-tfe"
-  public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCWTvOFNdwL7X3sVa3trlSYyQCZ1mAbTSMa7Z3V+0px4NU24ZcI93yh5UTAZjhHMh95hoc7069O/3Yj4V1v92oI+UdNF8ZcBY9BwtuzIlAVB7RLAyCzMdO91Jg4OMtUcCeM5beVKqW6Qp1AywbNCcbcfRBnTcfuRkZswjHLlMj+CsBaU23QiVE8tbARDCOTXCwErbxhcwmOnKE1dnhEZkslqFxsTYUZIQgj6ePB5cCBUGLb2n0PQ5NmVo3+xBsEVC3OaX1xjf0WPzF6+ppSEa2qm1BqqbMi9tMrObVZn37/Zu75OizSJrGrgRz3YTJixebS7nA309jDuJMzWj3HA/m3RWdtRVCnBIqpG75X4uzVg9TFRaNbF+tN37Lrdlp8tWKW4JeWlO9hNtPkZVYqXVqfuWMaiY+BZoVmvw4sPgAZRufFMj1gNxiYTCoOlVzyIZJZvUxum2dIVm/GxsZylP9N4WpZOuyb4UTuyOlMnXONFAgLD1z1lWx1+0cG18T+5PmeIzutYVE5tIPDc+dEW2ZvJKHDqAhk7JjG60UvbcdjXBhCDDEM3Crf0sptwcsfLavhF3aSy6d4NKDRL4LtC908Vrnz3zwuO0XQ5ZJyJzYh2U6VqTQQfcdLuQ4qMr0TIqv1f29+VPy7b9aXVQrQKeCs4aviTzI/SpwADm+1Swkm9w== flamarion@arvore"
+  public_key = file("~/.ssh/cloud.pub")
 }
 
 resource "aws_security_group" "tfe_sg" {
@@ -103,18 +103,6 @@ data "template_file" "config_files" {
 }
 
 
-variable "private_key" {
-  description = "SSH Private Key"
-  type        = string
-  default     = ""
-}
-
-variable "file_creds" {
-  description = "Credentials variable defined in TFE"
-  type        = string
-  default     = ""
-}
-
 resource "aws_instance" "tfe_instance" {
   ami                    = var.image_id
   subnet_id              = data.terraform_remote_state.vpc.outputs.subnet_ids[0]
@@ -128,16 +116,6 @@ resource "aws_instance" "tfe_instance" {
 
   tags = merge(var.special_tags, { Name = "${var.tag_prefix}-instance" })
 
-  provisioner "file" {
-    content     = var.file_creds
-    destination = "/var/tmp/creds.txt"
-    connection {
-      host        = self.public_ip
-      type        = "ssh"
-      user        = "ubuntu"
-      private_key = var.private_key
-    }
-  }
 }
 
 resource "aws_lb" "flamarion_lb" {
