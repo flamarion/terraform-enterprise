@@ -40,4 +40,5 @@ variable "replicated_port" {
 
 variable "tfe_admin_password" {
   type = string
+  default = "SuperS3cret"
 }
