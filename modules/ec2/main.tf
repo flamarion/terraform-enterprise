@@ -19,6 +19,12 @@ resource "aws_instance" "tfe_instance" {
   root_block_device {
     volume_size = var.root_volume_size
   }
+  tags = merge(
+    var.instance_tags,
+    {
+      Name = "${var.tag_prefix}-public-subnet"
+    }
+  )
   
-  tags = var.instance_tags
+  
 }

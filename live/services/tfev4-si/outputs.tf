@@ -1,7 +1,11 @@
-output "public_access" {
-  value = [
-    aws_instance.tfe_instance.public_ip,
-    aws_instance.tfe_instance.public_dns,
-    aws_route53_record.flamarion.fqdn
-  ]
+output "instance_id" {
+  value = module.tfe_instance.*.intance_id
+}
+
+output "public_ip" {
+  value = module.tfe_instance.*.public_ip
+}
+
+output "public_dns" {
+  value = module.tfe_instance.*.public_dns
 }

@@ -102,21 +102,30 @@ data "template_file" "config_files" {
   }
 }
 
-
-resource "aws_instance" "tfe_instance" {
-  ami                    = var.image_id
-  subnet_id              = data.terraform_remote_state.vpc.outputs.subnet_ids[0]
-  instance_type          = "m5.large"
-  key_name               = aws_key_pair.tfe_key.key_name
-  vpc_security_group_ids = [aws_security_group.tfe_sg.id]
-  user_data              = data.template_file.config_files.rendered
-  root_block_device {
-    volume_size = 100
-  }
-
-  tags = merge(var.special_tags, { Name = "${var.tag_prefix}-instance" })
-
+module "tfe_instance" {
+  source = "../../../modules/ec2"
+  instance_count = 1
+  ami_id = var.image_id
+  subnet_id = data.terraform_remote_state.vpc.outputs.subnet_ids[0]
+  instance_type = "m5.large"
+  user_data = data.template_file.config_files.rendered
+  root_volume_size = 100
 }
+
+# resource "aws_instance" "tfe_instance" {
+#   ami                    = var.image_id
+#   subnet_id              = data.terraform_remote_state.vpc.outputs.subnet_ids[0]
+#   instance_type          = "m5.large"
+#   key_name               = aws_key_pair.tfe_key.key_name
+#   vpc_security_group_ids = [aws_security_group.tfe_sg.id]
+#   user_data              = data.template_file.config_files.rendered
+#   root_block_device {
+#     volume_size = 100
+#   }
+
+#   tags = merge(var.special_tags, { Name = "${var.tag_prefix}-instance" })
+
+# }
 
 resource "aws_lb" "flamarion_lb" {
   name               = "${var.tag_prefix}-lb"
@@ -279,19 +288,19 @@ resource "aws_lb_listener_rule" "asg_http" {
 
 resource "aws_lb_target_group_attachment" "http_port" {
   target_group_arn = aws_lb_target_group.tfe_lb_tg_http.arn
-  target_id        = aws_instance.tfe_instance.id
+  target_id        = module.tfe_instance[0].intance_id
   port             = var.http_port
 }
 
 resource "aws_lb_target_group_attachment" "https_port" {
   target_group_arn = aws_lb_target_group.tfe_lb_tg_https.arn
-  target_id        = aws_instance.tfe_instance.id
+  target_id        = module.tfe_instance[0].intance_id
   port             = var.https_port
 }
 
 resource "aws_lb_target_group_attachment" "replicated_port" {
   target_group_arn = aws_lb_target_group.tfe_lb_tg_https_replicated.arn
-  target_id        = aws_instance.tfe_instance.id
+  target_id        = module.tfe_instance[0].intance_id
   port             = var.replicated_port
 }
 
