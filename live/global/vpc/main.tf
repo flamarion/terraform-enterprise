@@ -5,21 +5,27 @@ provider "aws" {
 
 terraform {
   required_version = "~> 0.12"
-  backend "s3" {
 
-    bucket = "flamarion-hashicorp"
-    key    = "tfstate/tfe-vpc.tfstate"
-    region = "eu-central-1"
-
-
-    dynamodb_table = "flamarion-hashicorp-locks"
-    encrypt        = true
+  backend "atlas" {
+    name = "FlamarionLab/terraform-vpc"
+    address = "https://app.terraform.io" # optional
   }
+  # backend "s3" {
+
+  #   bucket = "flamarion-hashicorp"
+  #   key    = "tfstate/tfe-vpc.tfstate"
+  #   region = "eu-central-1"
+
+
+  #   dynamodb_table = "flamarion-hashicorp-locks"
+  #   encrypt        = true
+  # }
 }
 
 module "tfe_vpc" {
 
-  source = "../../../modules/vpc"
+  source  = "app.terraform.io/FlamarionLab/vpc/aws"
+  version = "0.0.1"
 
   # VPC
   cidr_block           = "10.0.0.0/16"
