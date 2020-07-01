@@ -1,6 +1,22 @@
 #!/bin/bash
 
-mv /etc/settings.json /etc/settings.json.bkp
+mv /etc/settings.json /etc/settings.json.bkp || true 
+mv /etc/replicated.conf /etc/replicated.conf.bkp || true
+
+cat > /etc/replicated.conf <<EOF
+{
+  "DaemonAuthenticationType": "password",
+  "DaemonAuthenticationPassword": "${admin_password}",
+  "TlsBootstrapType": "server-path",
+  "TlsBootstrapHostname": "localhost",
+  "TlsBootstrapCert": "/etc/localhost.crt",
+  "TlsBootstrapKey": "/etc/localhost.key",
+  "BypassPreflightChecks": true,
+  "ImportSettingsFrom": "/etc/settings.json",
+  "LicenseFileLocation": "/etc/license.rli",
+  "ReleaseSequence": ${rel_seq}
+}
+EOF
 
 cat > /etc/settings.json <<EOF
 {
@@ -31,7 +47,7 @@ cat > /etc/settings.json <<EOF
     "value": "1"
   },
   "enc_password": {
-    "value": "SuperS3cret"
+    "value": "${admin_password}"
   },
   "extern_vault_addr": {},
   "extern_vault_enable": {

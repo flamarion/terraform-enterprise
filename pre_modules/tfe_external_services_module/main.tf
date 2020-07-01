@@ -272,6 +272,8 @@ data "template_file" "userdata" {
   template = file("templates/userdata.tpl")
 
   vars = {
+    admin_password = var.admin_password
+    rel_seq        = var.rel_seq
     s3_bucket_name = "${var.tag_prefix}-es"
     s3_region      = aws_s3_bucket.tfe_s3.region
     db_name        = module.tfe_db_cluster.db_name

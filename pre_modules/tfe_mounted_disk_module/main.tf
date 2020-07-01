@@ -6,114 +6,128 @@ terraform {
   required_version = "~> 0.12"
 }
 
-# Load Balancer Security Group
-module "tfe_lb_sg" {
-  source  = "./modules/sg"
-  sg_name = "${var.tag_prefix}-lb-sg"
-  sg_desc = "TFE Load Balancer Security Group"
+
+# Security Group
+module "tfe_sg" {
+  source  = "../../modules/sg"
+  sg_name = "${var.tag_prefix}-sg"
+  sg_desc = "Security Group"
   vpc_id  = var.vpc_id
   sg_tags = {
-    Name = "${var.tag_prefix}-lb-sg"
+    Name = "${var.tag_prefix}-sg"
   }
 
   sg_rules_cidr = var.sg_rules_cidr
 }
 
-# TFE Instances Security Group
-module "tfe_instances_sg" {
-  source  = "./modules/sg"
-  sg_name = "${var.tag_prefix}-sg"
-  sg_desc = "TFE Instances Security Group"
-  vpc_id  = var.vpc_id
-  sg_tags = {
-    Name = "${var.tag_prefix}-sg"
-  }
-  source_sgid_rule = "enbled"
-  sg_rules_sgid    = var.sg_rules_sgid
+#EBS Volume format and mount
+data "template_file" "alias_nvme" {
+  template = "${file("${path.module}/templates/ebs_alias.sh.tpl")}"
 }
 
+data "template_file" "attach_nvme" {
+  template = "${file("${path.module}/templates/ebs_mount.sh.tpl")}"
 
+  vars = {
+    volume_name = var.ebs_device_name
+    mount_point = var.ebs_mount_point
+    file_system = var.ebs_file_system
+  }
+}
 
-# Script to boot strap TFE Installation
-data "template_file" "userdata" {
-  template = file("templates/userdata.tpl")
-
+# Script to install TFE
+data "template_file" "tfe_config" {
+  template = file("${path.module}/templates/tfe_config.sh.tpl")
   vars = {
     admin_password = var.admin_password
     rel_seq        = var.rel_seq
-    disk_path      = var.disk_path
     lb_fqdn        = aws_route53_record.flamarion.fqdn
+    tfe_mout_point = var.ebs_mount_point
   }
 }
 
+data "template_cloudinit_config" "final_config" {
 
-# resource "aws_ebs_volume" "tfe_data" {
-#   availability_zone = aws_autoscaling_group.tfe_asg.availability_zone
-# }
+  gzip          = false
+  base64_encode = false
+
+  part {
+    content_type = "text/x-shellscript"
+    content      = data.template_file.alias_nvme.rendered
+  }
+
+  part {
+    content_type = "text/x-shellscript"
+    content      = data.template_file.attach_nvme.rendered
+  }
+
+  part {
+    content_type = "text/x-shellscript"
+    content      = data.template_file.tfe_config.rendered
+  }
+
+}
 
 
-# Launch configuration 
-resource "aws_launch_configuration" "tfe_instances" {
-  name                        = "${var.tag_prefix}-lc"
-  image_id                    = var.image_id
-  instance_type               = var.instance_type
-  key_name                    = var.key_name
-  security_groups             = [module.tfe_instances_sg.sg_id]
-  associate_public_ip_address = false
-  user_data                   = data.template_file.userdata.rendered
+# Instance configuration
+resource "aws_instance" "tfe_instance" {
+  ami                    = var.ami_id
+  subnet_id              = var.subnet_id
+  instance_type          = var.instance_type
+  key_name               = var.key_name
+  user_data              = data.template_cloudinit_config.final_config.rendered
+  vpc_security_group_ids = [module.tfe_sg.sg_id]
+
   root_block_device {
-    volume_size = 100
+    volume_size = var.root_volume_size
   }
+  tags = merge(
+    var.instance_tags,
+    {
+      Name = "${var.tag_prefix}-instance"
+    }
+  )
+}
 
-  lifecycle {
-    create_before_destroy = true
+# EBS volume
+resource "aws_ebs_volume" "tfe_data" {
+  availability_zone = aws_instance.tfe_instance.availability_zone
+  size              = var.ebs_volume_size
+  type              = "gp2"
+  tags = {
+    Name = "${var.tag_prefix}-ebs-volume"
   }
 }
 
-
-# Auto Scaling Group
-resource "aws_autoscaling_group" "tfe_asg" {
-  name                 = "${var.tag_prefix}-asg"
-  max_size             = 1
-  min_size             = 1
-  vpc_zone_identifier  = var.vpc_zone_identifier
-  launch_configuration = aws_launch_configuration.tfe_instances.name
-  target_group_arns = [
-    aws_lb_target_group.tfe_lb_tg_http.arn,
-    aws_lb_target_group.tfe_lb_tg_https.arn,
-    aws_lb_target_group.tfe_lb_tg_https_replicated.arn
-  ]
-  health_check_type = "ELB"
-
-  tag {
-    key                 = "Name"
-    value               = "${var.tag_prefix}-asg-instances"
-    propagate_at_launch = true
-  }
+resource "aws_volume_attachment" "tfe_data_attachment" {
+  device_name = var.ebs_device_name
+  volume_id   = aws_ebs_volume.tfe_data.id
+  instance_id = aws_instance.tfe_instance.id
 }
 
-# # Load Balancer (ALB)
+
+# Load Balancer
 resource "aws_lb" "flamarion_lb" {
   name               = "${var.tag_prefix}-lb"
   load_balancer_type = "application"
-  security_groups    = [module.tfe_lb_sg.sg_id]
-  subnets            = data.terraform_remote_state.vpc.outputs.subnet_ids
+  security_groups    = [module.tfe_sg.sg_id]
+  subnets            = var.subnets
   tags = {
     Name = "${var.tag_prefix}-lb"
   }
 }
 
-# TFE LB Target groups
+# LB Target groups
 resource "aws_lb_target_group" "tfe_lb_tg_https" {
   name                 = "${var.tag_prefix}-tg-${var.https_port}"
   port                 = var.https_port
-  protocol             = "HTTPS"
-  vpc_id               = data.terraform_remote_state.vpc.outputs.vpc_id
+  protocol             = var.https_proto
+  vpc_id               = var.vpc_id
   deregistration_delay = 60
   slow_start           = 300
   health_check {
     path                = "/_health_check"
-    protocol            = "HTTPS"
+    protocol            = var.https_proto
     matcher             = "200"
     interval            = 30
     timeout             = 20
@@ -125,13 +139,13 @@ resource "aws_lb_target_group" "tfe_lb_tg_https" {
 resource "aws_lb_target_group" "tfe_lb_tg_https_replicated" {
   name                 = "${var.tag_prefix}-tg-${var.replicated_port}"
   port                 = var.replicated_port
-  protocol             = "HTTPS"
-  vpc_id               = data.terraform_remote_state.vpc.outputs.vpc_id
+  protocol             = var.https_proto
+  vpc_id               = var.vpc_id
   deregistration_delay = 60
   slow_start           = 180
   health_check {
     path                = "/dashboard"
-    protocol            = "HTTPS"
+    protocol            = var.https_proto
     matcher             = "200,301,302"
     interval            = 30
     timeout             = 20
@@ -143,13 +157,13 @@ resource "aws_lb_target_group" "tfe_lb_tg_https_replicated" {
 resource "aws_lb_target_group" "tfe_lb_tg_http" {
   name                 = "${var.tag_prefix}-tg-${var.http_port}"
   port                 = var.http_port
-  protocol             = "HTTP"
-  vpc_id               = data.terraform_remote_state.vpc.outputs.vpc_id
+  protocol             = var.http_proto
+  vpc_id               = var.vpc_id
   deregistration_delay = 60
   slow_start           = 180
   health_check {
     path                = "/"
-    protocol            = "HTTP"
+    protocol            = var.http_proto
     matcher             = "200-299,300-399"
     interval            = 30
     timeout             = 20
@@ -169,7 +183,7 @@ data "aws_acm_certificate" "hashicorp_success" {
 resource "aws_lb_listener" "tfe_listener_https" {
   load_balancer_arn = aws_lb.flamarion_lb.arn
   port              = var.https_port
-  protocol          = "HTTPS"
+  protocol          = var.https_proto
   certificate_arn   = data.aws_acm_certificate.hashicorp_success.arn
   ssl_policy        = "ELBSecurityPolicy-2016-08"
 
@@ -182,7 +196,7 @@ resource "aws_lb_listener" "tfe_listener_https" {
 resource "aws_lb_listener" "tfe_listener_https_replicated" {
   load_balancer_arn = aws_lb.flamarion_lb.arn
   port              = var.replicated_port
-  protocol          = "HTTPS"
+  protocol          = var.https_proto
   certificate_arn   = data.aws_acm_certificate.hashicorp_success.arn
   ssl_policy        = "ELBSecurityPolicy-2016-08"
 
@@ -195,7 +209,7 @@ resource "aws_lb_listener" "tfe_listener_https_replicated" {
 resource "aws_lb_listener" "tfe_listener_http" {
   load_balancer_arn = aws_lb.flamarion_lb.arn
   port              = var.http_port
-  protocol          = "HTTP"
+  protocol          = var.http_proto
 
   default_action {
     type             = "forward"
@@ -252,6 +266,26 @@ resource "aws_lb_listener_rule" "asg_http" {
   }
 }
 
+resource "aws_lb_target_group_attachment" "http_port" {
+  target_group_arn = aws_lb_target_group.tfe_lb_tg_http.arn
+  target_id        = aws_instance.tfe_instance.id
+  port             = var.http_port
+}
+
+resource "aws_lb_target_group_attachment" "https_port" {
+  target_group_arn = aws_lb_target_group.tfe_lb_tg_https.arn
+  target_id        = aws_instance.tfe_instance.id
+  port             = var.https_port
+}
+
+resource "aws_lb_target_group_attachment" "replicated_port" {
+  target_group_arn = aws_lb_target_group.tfe_lb_tg_https_replicated.arn
+  target_id        = aws_instance.tfe_instance.id
+  port             = var.replicated_port
+}
+
+
+
 # Route53 DNS Record
 data "aws_route53_zone" "selected" {
   name = "hashicorp-success.com."
@@ -259,7 +293,7 @@ data "aws_route53_zone" "selected" {
 
 resource "aws_route53_record" "flamarion" {
   zone_id = data.aws_route53_zone.selected.id
-  name    = "flamarion.hashicorp-success.com"
+  name    = "${var.dns_record_name}.hashicorp-success.com"
   type    = "A"
   alias {
     name                   = aws_lb.flamarion_lb.dns_name
@@ -267,3 +301,4 @@ resource "aws_route53_record" "flamarion" {
     evaluate_target_health = true
   }
 }
+

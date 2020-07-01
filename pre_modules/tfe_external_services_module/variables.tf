@@ -13,7 +13,17 @@ variable "region" {
 variable "image_id" {
   description = "AMI id"
   type        = string
-  default     = "ami-01f629e0600d93cef"
+  default     = "ami-0ca5b487ed9f8209f"
+}
+
+variable "admin_password" {
+  type    = string
+  default = "SuperS3cret"
+}
+
+variable "rel_seq" {
+  type    = string
+  default = 0
 }
 
 # 22: To access the instance via SSH from your computer. SSH access to the instance is required for administration and debugging.

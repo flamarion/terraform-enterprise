@@ -1,19 +1,19 @@
-output "public_fqdn" {
-  value = aws_route53_record.flamarion.fqdn
+output "public_ip" {
+  value = aws_instance.tfe_instance.public_ip
+}
+
+output "public_dns" {
+  value = aws_instance.tfe_instance.public_dns
 }
 
 output "lb_fqdn" {
-  value = aws_lb.flamarion_lb.dns_name
+  value = aws_route53_record.flamarion.fqdn
 }
 
-output "db_cluster_endpoint" {
-  value = module.tfe_db_cluster.endpoint
+output "instance_id" {
+  value = aws_instance.tfe_instance.id
 }
 
-output "db_cluster_port" {
-  value = module.tfe_db_cluster.port
-}
-
-output "db_cluster_name" {
-  value = module.tfe_db_cluster.db_name
+output "sg_id" {
+  value = module.tfe_sg.sg_id
 }

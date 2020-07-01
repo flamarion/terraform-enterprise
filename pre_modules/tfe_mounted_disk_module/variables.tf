@@ -1,46 +1,157 @@
-variable "tag_prefix" {
-  description = "Prefix for all tags and names"
-  type        = string
-  default     = "flamarion-tfe"
-}
-
+# Global Variables
 variable "region" {
   description = "AWS Region"
   type        = string
   default     = "eu-central-1"
 }
 
-variable "image_id" {
+variable "tag_prefix" {
+  description = "Prefix for all tags and names"
+  type        = string
+  default     = "flamarion-tfe-md"
+}
+
+# VPC variables
+variable "vpc_id" {
+  description = "VPC id"
+  type        = string
+}
+
+variable "subnet_id" {
+  description = "Subnet ID"
+  type        = string
+}
+
+variable "subnets" {
+  description = "VPC Subnets"
+  type        = list(string)
+}
+
+# Instance Variables
+variable "instance_count" {
+  description = "How many instances to create"
+  type        = number
+  default     = 1
+}
+
+variable "instance_type" {
+  description = "AWS Instance Type"
+  type        = string
+  default     = "m5.large"
+}
+
+variable "ami_id" {
   description = "AMI id"
   type        = string
   default     = "ami-01f629e0600d93cef"
 }
 
-# 22: To access the instance via SSH from your computer. SSH access to the instance is required for administration and debugging.
-# 80: To access the Terraform Cloud application via HTTP. This port redirects to port 443 for HTTPS.
-# 443: To access the Terraform Cloud application via HTTPS.
+variable "key_name" {
+  description = "SSH Key name"
+  type        = string
+}
 
-variable "http_port" {
-  description = "HTTP Port"
+variable "root_volume_size" {
+  description = "Root volume size"
   type        = number
-  default     = 80
+  default     = 40
+}
+
+variable "instance_tags" {
+  description = "Extra tags"
+  type        = map(string)
+  default     = {}
+}
+
+variable "ebs_device_name" {
+  description = "EBS volume device name"
+  type        = string
+  default     = "/dev/sdf"
+}
+
+variable "ebs_mount_point" {
+  description = "EBS volume mount point"
+  type        = string
+  default     = "/opt/tfe"
+}
+
+variable "ebs_file_system" {
+  description = "EBS volume filesystem"
+  type        = string
+  default     = "xfs"
+}
+
+variable "ebs_volume_size" {
+  description = "EBS Volume size"
+  type        = number
+  default     = 100
+}
+
+
+# Load Balance Ports
+variable "http_port" {
+  type    = number
+  default = 80
 }
 
 variable "https_port" {
-  description = "HTTPS Port"
-  type        = number
-  default     = 443
+  type    = number
+  default = 443
 }
 
 variable "replicated_port" {
-  description = "Replicated Port"
-  type        = number
-  default     = 8800
+  type    = number
+  default = 8800
 }
 
-variable "ssh_port" {
-  description = "SSH Port"
-  type        = number
-  default     = 22
+variable "http_proto" {
+  type    = string
+  default = "HTTP"
 }
 
+variable "https_proto" {
+  type    = string
+  default = "HTTPS"
+}
+
+# Security Group Rules
+variable "sg_rules_cidr" {
+  description = "Security group rules"
+  type = map(object({
+    description = string
+    type        = string
+    from_port   = number
+    to_port     = number
+    cidr_blocks = list(string)
+    protocol    = string
+    sg_id       = string
+  }))
+  default = {
+    ssh = {
+      description = "Terraform Cloud application via HTTP"
+      type        = "ingress"
+      cidr_blocks = ["0.0.0.0/0"]
+      from_port   = 0
+      to_port     = 0
+      protocol    = -1
+      sg_id       = "default"
+    }
+  }
+}
+
+# App variables
+
+variable "dns_record_name" {
+  type    = string
+  default = "tfe-demo"
+}
+
+variable "admin_password" {
+  type    = string
+  default = "SuperS3cret"
+}
+
+variable "rel_seq" {
+  type    = number
+  default = 0
+}

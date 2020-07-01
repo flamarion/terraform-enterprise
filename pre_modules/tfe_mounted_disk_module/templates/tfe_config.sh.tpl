@@ -1,13 +1,5 @@
-#!/usr/bin/env bash 
+#!/bin/bash
 
-# Formating the ebs volume
-printf 'o\nn\np\n1\n\n\nw\n' | fdisk "/dev/nvme2n1"
-mkfs.ext4 "/dev/nvme2n1p1"
-mkdir /opt/tf_data
-echo /dev/nvme2n1p1  /opt/tf_data  ext4  defaults,nofail  1  2 >> /etc/fstab
-
-
-# Replicated configuration
 cat > /etc/replicated.conf <<EOF
 {
   "DaemonAuthenticationType": "password",
@@ -23,7 +15,7 @@ cat > /etc/replicated.conf <<EOF
 }
 EOF
 
-# TFE Configuration
+
 cat > /etc/settings.json <<EOF
 {
   "aws_access_key_id": {},
@@ -49,7 +41,7 @@ cat > /etc/settings.json <<EOF
     "value": "hashicorp/build-worker:now"
   },
   "disk_path": {
-    "value": "${disk_path}"
+    "value": "${tfe_mout_point}"
   },
   "enable_metrics_collection": {
     "value": "1"
@@ -107,8 +99,7 @@ cat > /etc/settings.json <<EOF
 }
 EOF
 
-# Installing the TFE
 chmod 644 /etc/replicated.conf /etc/settings.json
 curl -o /tmp/install.sh https://install.terraform.io/ptfe/stable
 chmod +x /tmp/install.sh
-/tmp/install.sh no-proxy private-address=$(curl http://169.254.169.254/latest/meta-data/local-ipv4) public-address=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)
+#/tmp/install.sh no-proxy private-address=$(curl http://169.254.169.254/latest/meta-data/local-ipv4) public-address=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)
