@@ -42,19 +42,19 @@ module "tfe_es" {
   db_port          = module.tfe_es.db_cluster_port
   db_endpoint      = module.tfe_es.db_cluster_endpoint
   db_sg_id_list    = [module.tfe_es.db_sg_id]
-  db_subnet_group  = data.terraform_remote_state.vpc.outputs.db_subnet_group
+  db_subnet_group  = data.terraform_remote_state.vpc.outputs.db_subnet_group[0]
   az_list          = data.terraform_remote_state.vpc.outputs.az
   # Lauch Configuration
   image_id         = "ami-0ca5b487ed9f8209f"
   instance_type    = "m5.large"
   key_name         = aws_key_pair.tfe_key.key_name
-  instance_sg_list = [module.tfe_es.instances_sg_id]
+  instance_sg_list = [module.tfe_es.instances_sg_id, module.tfe_es.instances_extra_sg_id]
   # Autoscaling Group
   max_size            = 1
   min_size            = 1
-  vpc_zone_identifier = data.terraform_remote_state.vpc.outputs.subnet_ids
+  vpc_zone_identifier = data.terraform_remote_state.vpc.outputs.public_subnets_id
   # Load Balancer
-  subnets          = data.terraform_remote_state.vpc.outputs.subnet_ids
+  subnets          = data.terraform_remote_state.vpc.outputs.public_subnets_id
   lb_sg            = [module.tfe_es.lb_sg_id]
   http_port        = var.http_port
   http_proto       = var.http_proto
@@ -108,7 +108,7 @@ module "tfe_es" {
     postgres = {
       description = "Allow access from TFE Instances"
       type        = "ingress"
-      cidr_blocks = data.terraform_remote_state.vpc.outputs.subnets
+      cidr_blocks = data.terraform_remote_state.vpc.outputs.public_subnets
       from_port   = module.tfe_es.db_cluster_port
       to_port     = module.tfe_es.db_cluster_port
       protocol    = "tcp"
@@ -124,37 +124,37 @@ module "tfe_es" {
       sg_id       = module.tfe_es.db_sg_id
     }
   }
-  # Instance rules based on CIDR sources
+  # Instance rules based on SG ID sources
   sg_instance_rules_sgid = {
     http = {
       description = "Terraform Cloud application via HTTP"
       type        = "ingress"
-      source_sgid = module.tfe_es.lb_sg_id
       from_port   = var.http_port
       to_port     = var.http_port
+      source_sgid = module.tfe_es.lb_sg_id
       protocol    = "tcp"
       sg_id       = module.tfe_es.instances_sg_id
     },
     https = {
       description = "Terraform Cloud application via HTTPS"
       type        = "ingress"
-      source_sgid = module.tfe_es.lb_sg_id
       from_port   = var.https_port
       to_port     = var.https_port
+      source_sgid = module.tfe_es.lb_sg_id
       protocol    = "tcp"
       sg_id       = module.tfe_es.instances_sg_id
     },
     replicated = {
       description = "Replicated dashboard"
       type        = "ingress"
-      source_sgid = module.tfe_es.lb_sg_id
       from_port   = var.replicated_port
       to_port     = var.replicated_port
+      source_sgid = module.tfe_es.lb_sg_id
       protocol    = "tcp"
       sg_id       = module.tfe_es.instances_sg_id
     }
   }
-  # Instance rules based on SG ID rules
+  # Instance rules based on CIDRrules
   sg_instance_rules_cidr = {
     ssh = {
       description = "Allow SSH"

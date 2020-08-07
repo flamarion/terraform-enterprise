@@ -36,11 +36,11 @@ module "tfe_db_sg" {
 # TFE Instances Security Group
 module "tfe_instances_sg" {
   source  = "../modules/sg"
-  sg_name = "${var.tag_prefix}-sg"
-  sg_desc = "TFE Instances Security Group"
+  sg_name = "${var.tag_prefix}-sgid-sg"
+  sg_desc = "TFE Instances Security Group - SGID"
   vpc_id  = var.vpc_id
   tags = {
-    Name = "${var.tag_prefix}-sg"
+    Name = "${var.tag_prefix}-sgid-sg"
   }
   source_sgid_rule = "enbled"
   sg_rules_sgid    = var.sg_instance_rules_sgid
@@ -49,11 +49,11 @@ module "tfe_instances_sg" {
 # Extra security group rules for TFE Instances
 module "tfe_instances_extra_sg" {
   source  = "../modules/sg"
-  sg_name = "${var.tag_prefix}-sg"
-  sg_desc = "TFE Instances Security Group"
+  sg_name = "${var.tag_prefix}-cidr-sg"
+  sg_desc = "TFE Instances Security Group - CIDR"
   vpc_id  = var.vpc_id
   tags = {
-    Name = "${var.tag_prefix}-sg"
+    Name = "${var.tag_prefix}-cidr-sg"
   }
   sg_rules_cidr = var.sg_instance_rules_cidr
 }

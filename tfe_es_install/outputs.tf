@@ -35,3 +35,13 @@ output "db_cluster_user" {
 output "db_cluster_pass" {
     value = module.tfe_es.db_cluster_pass
 }
+
+# Access data
+
+output "public_fqdn" {
+    value = module.tfe_es.public_fqdn
+}
+
+output "lb_fqdn" {
+    value = module.tfe_es.lb_fqdn
+}

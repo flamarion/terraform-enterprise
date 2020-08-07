@@ -69,17 +69,6 @@ variable "sg_instance_rules_sgid" {
     protocol    = string
     sg_id       = string
   }))
-  default = {
-    ssh = {
-      description = "Terraform Cloud application via HTTP"
-      type        = "ingress"
-      source_sgid = "default"
-      from_port   = 0
-      to_port     = 0
-      protocol    = -1
-      sg_id       = "default"
-    }
-  }
 }
 
 variable "sg_instance_rules_cidr" {
@@ -155,7 +144,7 @@ variable "db_sg_id_list" {
 variable "db_subnet_group" {
   description = "Database subnet group name"
   type        = string
-  default     = "tfe-db-group"
+  default     = "tfe-db-subnet-group"
 }
 
 # Instances
