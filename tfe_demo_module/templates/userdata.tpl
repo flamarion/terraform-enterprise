@@ -1,4 +1,21 @@
-#!/usr/bin/env bash 
+#!/usr/bin/env bash
+
+# if [ -d /etc/docker ]; then 
+#   echo OK
+# else
+#   mkdir /etc/docker
+# fi
+
+# cat > /etc/docker/daemon.json <<EOF
+# {
+#   "log-driver": "awslogs",
+#   "log-opts": {
+#     "awslogs-region":"eu-central-1",
+#     "awslogs-group": "flamarion-logs",
+#     "awslogs-stream": "tfe"
+#   }
+# }
+# EOF
 
 cat > /etc/replicated.conf <<EOF
 {

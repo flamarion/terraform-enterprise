@@ -9,26 +9,65 @@ terraform {
 
 # Security Group
 module "tfe_sg" {
-  source  = "../../modules/sg"
+  source  = "../modules/sg"
   sg_name = "${var.tag_prefix}-sg"
   sg_desc = "Security Group"
   vpc_id  = var.vpc_id
-  sg_tags = {
+  tags = {
     Name = "${var.tag_prefix}-sg"
   }
 
   sg_rules_cidr = var.sg_rules_cidr
 }
 
+#EBS Volume format and mount
+data "template_file" "alias_nvme" {
+  template = "${file("${path.module}/templates/ebs_alias.sh.tpl")}"
+}
+
+data "template_file" "attach_nvme" {
+  template = "${file("${path.module}/templates/ebs_mount.sh.tpl")}"
+
+  vars = {
+    volume_name = var.ebs_device_name
+    mount_point = var.ebs_mount_point
+    file_system = var.ebs_file_system
+  }
+}
+
 # Script to install TFE
-data "template_file" "config_files" {
-  template = file("${path.module}/templates/userdata.tpl")
+data "template_file" "tfe_config" {
+  template = file("${path.module}/templates/tfe_config.sh.tpl")
   vars = {
     admin_password = var.admin_password
     rel_seq        = var.rel_seq
     lb_fqdn        = aws_route53_record.flamarion.fqdn
+    tfe_mount_point = var.ebs_mount_point
   }
 }
+
+data "template_cloudinit_config" "final_config" {
+
+  gzip          = false
+  base64_encode = false
+
+  part {
+    content_type = "text/x-shellscript"
+    content      = data.template_file.alias_nvme.rendered
+  }
+
+  part {
+    content_type = "text/x-shellscript"
+    content      = data.template_file.attach_nvme.rendered
+  }
+
+  part {
+    content_type = "text/x-shellscript"
+    content      = data.template_file.tfe_config.rendered
+  }
+
+}
+
 
 # Instance configuration
 resource "aws_instance" "tfe_instance" {
@@ -36,7 +75,7 @@ resource "aws_instance" "tfe_instance" {
   subnet_id              = var.subnet_id
   instance_type          = var.instance_type
   key_name               = var.key_name
-  user_data              = data.template_file.config_files.rendered
+  user_data              = data.template_cloudinit_config.final_config.rendered
   vpc_security_group_ids = [module.tfe_sg.sg_id]
 
   root_block_device {
@@ -50,20 +89,21 @@ resource "aws_instance" "tfe_instance" {
   )
 }
 
-# resource "aws_ebs_volume" "tfe_data" {
-#   availability_zone = aws_instance.tfe_instance.availability_zone
-#   size              = 50
-#   type              = "gp2"
-#   tags = {
-#     Name = "${var.tag_prefix}-ebs-volume"
-#   }
-# }
+# EBS volume
+resource "aws_ebs_volume" "tfe_data" {
+  availability_zone = aws_instance.tfe_instance.availability_zone
+  size              = var.ebs_volume_size
+  type              = "gp2"
+  tags = {
+    Name = "${var.tag_prefix}-ebs-volume"
+  }
+}
 
-# resource "aws_volume_attachment" "tfe_data_attachment" {
-#   device_name = "/dev/sdf"
-#   volume_id   = aws_ebs_volume.tfe_data.id
-#   instance_id = aws_instance.tfe_instance.id
-# }
+resource "aws_volume_attachment" "tfe_data_attachment" {
+  device_name = var.ebs_device_name
+  volume_id   = aws_ebs_volume.tfe_data.id
+  instance_id = aws_instance.tfe_instance.id
+}
 
 
 # Load Balancer

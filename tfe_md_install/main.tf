@@ -32,7 +32,7 @@ resource "aws_key_pair" "tfe_key" {
 
 
 module "tfe_md" {
-  source           = "../tfe_mounted_disk_module"
+  source           = "../tfe_md_module"
   ami_id           = "ami-0ca5b487ed9f8209f"
   tag_prefix       = "flamarion-tfe-md"
   vpc_id           = data.terraform_remote_state.vpc.outputs.vpc_id

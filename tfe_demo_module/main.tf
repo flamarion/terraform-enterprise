@@ -8,66 +8,27 @@ terraform {
 
 
 # Security Group
-module "tfe_sg" {
-  source  = "../../modules/sg"
+module "sg" {
+  source  = "../modules/sg"
   sg_name = "${var.tag_prefix}-sg"
   sg_desc = "Security Group"
   vpc_id  = var.vpc_id
-  sg_tags = {
+  tags = {
     Name = "${var.tag_prefix}-sg"
   }
 
   sg_rules_cidr = var.sg_rules_cidr
 }
 
-#EBS Volume format and mount
-data "template_file" "alias_nvme" {
-  template = "${file("${path.module}/templates/ebs_alias.sh.tpl")}"
-}
-
-data "template_file" "attach_nvme" {
-  template = "${file("${path.module}/templates/ebs_mount.sh.tpl")}"
-
-  vars = {
-    volume_name = var.ebs_device_name
-    mount_point = var.ebs_mount_point
-    file_system = var.ebs_file_system
-  }
-}
-
 # Script to install TFE
-data "template_file" "tfe_config" {
-  template = file("${path.module}/templates/tfe_config.sh.tpl")
+data "template_file" "config_files" {
+  template = file("${path.module}/templates/userdata.tpl")
   vars = {
     admin_password = var.admin_password
     rel_seq        = var.rel_seq
     lb_fqdn        = aws_route53_record.flamarion.fqdn
-    tfe_mout_point = var.ebs_mount_point
   }
 }
-
-data "template_cloudinit_config" "final_config" {
-
-  gzip          = false
-  base64_encode = false
-
-  part {
-    content_type = "text/x-shellscript"
-    content      = data.template_file.alias_nvme.rendered
-  }
-
-  part {
-    content_type = "text/x-shellscript"
-    content      = data.template_file.attach_nvme.rendered
-  }
-
-  part {
-    content_type = "text/x-shellscript"
-    content      = data.template_file.tfe_config.rendered
-  }
-
-}
-
 
 # Instance configuration
 resource "aws_instance" "tfe_instance" {
@@ -75,8 +36,9 @@ resource "aws_instance" "tfe_instance" {
   subnet_id              = var.subnet_id
   instance_type          = var.instance_type
   key_name               = var.key_name
-  user_data              = data.template_cloudinit_config.final_config.rendered
-  vpc_security_group_ids = [module.tfe_sg.sg_id]
+  user_data              = data.template_file.config_files.rendered
+  vpc_security_group_ids = [module.sg.sg_id]
+  iam_instance_profile   = aws_iam_instance_profile.tfe_profile.name
 
   root_block_device {
     volume_size = var.root_volume_size
@@ -89,20 +51,55 @@ resource "aws_instance" "tfe_instance" {
   )
 }
 
-# EBS volume
-resource "aws_ebs_volume" "tfe_data" {
-  availability_zone = aws_instance.tfe_instance.availability_zone
-  size              = var.ebs_volume_size
-  type              = "gp2"
-  tags = {
-    Name = "${var.tag_prefix}-ebs-volume"
-  }
+resource "aws_iam_role" "tfe_role" {
+  name               = "tfe_role"
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+     {
+      "Action": "sts:AssumeRole",
+      "Principal": {
+        "Service": "ec2.amazonaws.com"
+      },
+      "Effect": "Allow"
+    }
+  ]
+}
+EOF
 }
 
-resource "aws_volume_attachment" "tfe_data_attachment" {
-  device_name = var.ebs_device_name
-  volume_id   = aws_ebs_volume.tfe_data.id
-  instance_id = aws_instance.tfe_instance.id
+resource "aws_iam_instance_profile" "tfe_profile" {
+  name = "tfe_profile"
+  role = aws_iam_role.tfe_role.name
+}
+
+resource "aws_iam_policy" "tfe_cloudwatch" {
+  name   = "tfe_cloudwatch_policy"
+  path   = "/"
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams",
+        "logs:PutLogEvents"
+      ],
+      "Effect": "Allow",
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy_attachment" "policy_attach" {
+  role       = aws_iam_role.tfe_role.name
+  policy_arn = aws_iam_policy.tfe_cloudwatch.arn
 }
 
 
@@ -110,7 +107,7 @@ resource "aws_volume_attachment" "tfe_data_attachment" {
 resource "aws_lb" "flamarion_lb" {
   name               = "${var.tag_prefix}-lb"
   load_balancer_type = "application"
-  security_groups    = [module.tfe_sg.sg_id]
+  security_groups    = [module.sg.sg_id]
   subnets            = var.subnets
   tags = {
     Name = "${var.tag_prefix}-lb"

@@ -1,8 +1,5 @@
 #!/bin/bash
 
-mv /etc/settings.json /etc/settings.json.bkp || true 
-mv /etc/replicated.conf /etc/replicated.conf.bkp || true
-
 cat > /etc/replicated.conf <<EOF
 {
   "DaemonAuthenticationType": "password",
@@ -65,7 +62,7 @@ cat > /etc/settings.json <<EOF
   },
   "gcs_project": {},
   "hostname": {
-    "value": "flamarion.hashicorp-success.com"
+    "value": "${lb_fqdn}"
   },
   "iact_subnet_list": {},
   "iact_subnet_time_limit": {
@@ -111,6 +108,7 @@ cat > /etc/settings.json <<EOF
 }
 EOF
 
+chmod 644 /etc/replicated.conf /etc/settings.json
 curl -o /tmp/install.sh https://install.terraform.io/ptfe/stable
 chmod +x /tmp/install.sh
 /tmp/install.sh no-proxy private-address=$(curl http://169.254.169.254/latest/meta-data/local-ipv4) public-address=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)

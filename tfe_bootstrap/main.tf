@@ -19,9 +19,13 @@ terraform {
   }
 }
 
+locals {
+  owner = "flamarion"
+}
+
 module "tfe_vpc" {
 
-  source = "../../modules/vpc"
+  source = "../modules/vpc"
 
   # VPC
   cidr_block           = "10.0.0.0/16"
@@ -36,5 +40,39 @@ module "tfe_vpc" {
   create_db_subnet_group = true
   map_public_ip          = true
   enable_nat_gateway     = true
-  tag_prefix             = "flamarion-tfe"
+
+  #tags
+  vpc_tags = {
+    Name = "${local.owner}-vpc"
+  }
+  eip_tags = {
+    Name = "${local.owner}-eip"
+  }
+  public_subnet_tags = {
+    Name = "${local.owner}-public-subnet"
+  }
+  private_subnet_tags = {
+    Name = "${local.owner}-private-subnet"
+  }
+  database_subnet_tags = {
+    Name = "${local.owner}-db-subnet"
+  }
+  database_subnet_group_tags = {
+    Name = "${local.owner}-db-subnet-group"
+  }
+  nat_gw_tags = {
+    Name = "${local.owner}-nat-gw"
+  }
+  igw_tags = {
+    Name = "${local.owner}-igw"
+  }
+  public_rt_tags = {
+    Name = "${local.owner}-public-rt"
+  }
+  private_rt_tags = {
+    Name = "${local.owner}-private-rt"
+  }
+  db_rt_tags = {
+    Name = "${local.owner}-db-rt"
+  }
 }

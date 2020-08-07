@@ -22,12 +22,6 @@ variable "enable_dns_support" {
   default     = true
 }
 
-variable "tag_prefix" {
-  description = ""
-  type        = string
-  default     = ""
-}
-
 variable "vpc_tags" {
   description = ""
   type        = map(string)
@@ -58,6 +52,12 @@ variable "public_subnet_tags" {
   default     = {}
 }
 
+variable "public_rt_tags" {
+  description = ""
+  type        = map(string)
+  default     = {}
+}
+
 variable "private_subnets" {
   description = ""
   type        = list(string)
@@ -70,6 +70,13 @@ variable "private_subnet_tags" {
   default     = {}
 }
 
+variable "private_rt_tags" {
+  description = ""
+  type        = map(string)
+  default     = {}
+}
+
+
 variable "database_subnets" {
   description = ""
   type        = list(string)
@@ -77,6 +84,12 @@ variable "database_subnets" {
 }
 
 variable "database_subnet_tags" {
+  description = ""
+  type        = map(string)
+  default     = {}
+}
+
+variable "db_rt_tags" {
   description = ""
   type        = map(string)
   default     = {}

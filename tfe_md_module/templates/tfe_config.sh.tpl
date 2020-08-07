@@ -41,7 +41,7 @@ cat > /etc/settings.json <<EOF
     "value": "hashicorp/build-worker:now"
   },
   "disk_path": {
-    "value": "${tfe_mout_point}"
+    "value": "${tfe_mount_point}"
   },
   "enable_metrics_collection": {
     "value": "1"
@@ -102,4 +102,4 @@ EOF
 chmod 644 /etc/replicated.conf /etc/settings.json
 curl -o /tmp/install.sh https://install.terraform.io/ptfe/stable
 chmod +x /tmp/install.sh
-#/tmp/install.sh no-proxy private-address=$(curl http://169.254.169.254/latest/meta-data/local-ipv4) public-address=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)
+/tmp/install.sh no-proxy private-address=$(curl http://169.254.169.254/latest/meta-data/local-ipv4) public-address=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)
