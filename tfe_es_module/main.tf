@@ -42,7 +42,7 @@ module "tfe_instances_sg" {
   tags = {
     Name = "${var.tag_prefix}-sgid-sg"
   }
-  source_sgid_rule = "enbled"
+  source_sgid_rule = "enabled"
   sg_rules_sgid    = var.sg_instance_rules_sgid
 }
 
@@ -217,14 +217,14 @@ resource "aws_lb_target_group" "tfe_lb_tg_https" {
   port                 = var.https_port
   protocol             = var.https_proto
   vpc_id               = var.vpc_id
-  deregistration_delay = 60
+  # deregistration_delay = 30
   slow_start           = 300
   health_check {
     path                = "/_health_check"
     protocol            = var.https_proto
-    matcher             = "200"
-    interval            = 30
-    timeout             = 20
+    matcher             = "200-299,300-399"
+    interval            = 90
+    timeout             = 60
     healthy_threshold   = 2
     unhealthy_threshold = 10
   }
@@ -235,14 +235,14 @@ resource "aws_lb_target_group" "tfe_lb_tg_https_replicated" {
   port                 = var.replicated_port
   protocol             = var.replicated_proto
   vpc_id               = var.vpc_id
-  deregistration_delay = 60
-  slow_start           = 180
+  # deregistration_delay = 30
+  slow_start           = 300
   health_check {
     path                = "/dashboard"
     protocol            = var.replicated_proto
-    matcher             = "200,301,302"
-    interval            = 30
-    timeout             = 20
+    matcher             = "200-299,300-399"
+    interval            = 90
+    timeout             = 60
     healthy_threshold   = 2
     unhealthy_threshold = 10
   }
@@ -253,14 +253,14 @@ resource "aws_lb_target_group" "tfe_lb_tg_http" {
   port                 = var.http_port
   protocol             = var.http_proto
   vpc_id               = var.vpc_id
-  deregistration_delay = 60
-  slow_start           = 180
+  # deregistration_delay = 30
+  slow_start           = 300
   health_check {
     path                = "/"
     protocol            = var.http_proto
     matcher             = "200-299,300-399"
-    interval            = 30
-    timeout             = 20
+    interval            = 90
+    timeout             = 60
     healthy_threshold   = 2
     unhealthy_threshold = 10
   }
