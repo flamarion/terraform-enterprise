@@ -25,7 +25,7 @@ cat > /etc/replicated.conf <<EOF
   "LicenseFileLocation": "/etc/license.rli",
   "ReleaseSequence": ${rel_seq}
 }
-
+EOF
 
 cat > /etc/settings.json <<EOF
 {
