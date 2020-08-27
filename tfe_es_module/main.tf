@@ -86,8 +86,9 @@ resource "random_id" "id" {
 
 # S3 Bucket
 resource "aws_s3_bucket" "tfe_s3" {
-  bucket = "${var.tag_prefix}-es-${random_id.id.hex}"
-  acl    = "private"
+  bucket        = "${var.tag_prefix}-es-${random_id.id.hex}"
+  acl           = "private"
+  force_destroy = true
 
   versioning {
     enabled = true
@@ -213,12 +214,12 @@ resource "aws_lb" "flamarion_lb" {
 
 # TFE LB Target groups
 resource "aws_lb_target_group" "tfe_lb_tg_https" {
-  name                 = "${var.tag_prefix}-tg-${var.https_port}"
-  port                 = var.https_port
-  protocol             = var.https_proto
-  vpc_id               = var.vpc_id
+  name     = "${var.tag_prefix}-tg-${var.https_port}"
+  port     = var.https_port
+  protocol = var.https_proto
+  vpc_id   = var.vpc_id
   # deregistration_delay = 30
-  slow_start           = 300
+  slow_start = 300
   health_check {
     path                = "/_health_check"
     protocol            = var.https_proto
@@ -231,12 +232,12 @@ resource "aws_lb_target_group" "tfe_lb_tg_https" {
 }
 
 resource "aws_lb_target_group" "tfe_lb_tg_https_replicated" {
-  name                 = "${var.tag_prefix}-tg-${var.replicated_port}"
-  port                 = var.replicated_port
-  protocol             = var.replicated_proto
-  vpc_id               = var.vpc_id
+  name     = "${var.tag_prefix}-tg-${var.replicated_port}"
+  port     = var.replicated_port
+  protocol = var.replicated_proto
+  vpc_id   = var.vpc_id
   # deregistration_delay = 30
-  slow_start           = 300
+  slow_start = 300
   health_check {
     path                = "/dashboard"
     protocol            = var.replicated_proto
@@ -249,12 +250,12 @@ resource "aws_lb_target_group" "tfe_lb_tg_https_replicated" {
 }
 
 resource "aws_lb_target_group" "tfe_lb_tg_http" {
-  name                 = "${var.tag_prefix}-tg-${var.http_port}"
-  port                 = var.http_port
-  protocol             = var.http_proto
-  vpc_id               = var.vpc_id
+  name     = "${var.tag_prefix}-tg-${var.http_port}"
+  port     = var.http_port
+  protocol = var.http_proto
+  vpc_id   = var.vpc_id
   # deregistration_delay = 30
-  slow_start           = 300
+  slow_start = 300
   health_check {
     path                = "/"
     protocol            = var.http_proto
