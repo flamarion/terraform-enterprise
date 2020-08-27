@@ -1,19 +1,17 @@
 #!/usr/bin/env bash
 
-# if [ -d /etc/docker ]; then 
-#   echo OK
-# else
-#   mkdir /etc/docker
-# fi
-
-# cat > /etc/docker/daemon.json <<EOF
+# cat > /etc/replicated.conf <<EOF
 # {
-#   "log-driver": "awslogs",
-#   "log-opts": {
-#     "awslogs-region":"eu-central-1",
-#     "awslogs-group": "flamarion-logs",
-#     "awslogs-stream": "tfe"
-#   }
+#   "DaemonAuthenticationType": "password",
+#   "DaemonAuthenticationPassword": "${admin_password}",
+#   "TlsBootstrapType": "server-path",
+#   "TlsBootstrapHostname": "localhost",
+#   "TlsBootstrapCert": "/etc/localhost.crt",
+#   "TlsBootstrapKey": "/etc/localhost.key",
+#   "BypassPreflightChecks": true,
+#   "ImportSettingsFrom": "/etc/settings.json",
+#   "LicenseFileLocation": "/etc/license.rli",
+#   "ReleaseSequence": ${rel_seq}
 # }
 # EOF
 
@@ -21,10 +19,7 @@ cat > /etc/replicated.conf <<EOF
 {
   "DaemonAuthenticationType": "password",
   "DaemonAuthenticationPassword": "${admin_password}",
-  "TlsBootstrapType": "server-path",
-  "TlsBootstrapHostname": "localhost",
-  "TlsBootstrapCert": "/etc/localhost.crt",
-  "TlsBootstrapKey": "/etc/localhost.key",
+  "TlsBootstrapType": "self-signed",
   "BypassPreflightChecks": true,
   "ImportSettingsFrom": "/etc/settings.json",
   "LicenseFileLocation": "/etc/license.rli",
