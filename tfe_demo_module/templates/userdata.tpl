@@ -1,20 +1,5 @@
 #!/usr/bin/env bash
 
-# cat > /etc/replicated.conf <<EOF
-# {
-#   "DaemonAuthenticationType": "password",
-#   "DaemonAuthenticationPassword": "${admin_password}",
-#   "TlsBootstrapType": "server-path",
-#   "TlsBootstrapHostname": "localhost",
-#   "TlsBootstrapCert": "/etc/localhost.crt",
-#   "TlsBootstrapKey": "/etc/localhost.key",
-#   "BypassPreflightChecks": true,
-#   "ImportSettingsFrom": "/etc/settings.json",
-#   "LicenseFileLocation": "/etc/license.rli",
-#   "ReleaseSequence": ${rel_seq}
-# }
-# EOF
-
 cat > /etc/replicated.conf <<EOF
 {
   "DaemonAuthenticationType": "password",

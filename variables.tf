@@ -15,6 +15,12 @@ variable "replicated_port" {
 }
 
 variable "rel_seq" {
-  type = number
+  type    = number
   default = 0
+}
+
+variable "cloud_pub" {
+  description = "SSH Public key pair"
+  type        = string
+  default     = ""
 }
