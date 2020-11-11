@@ -9,12 +9,12 @@ terraform {
 
 # Security Group
 module "sg" {
-  source  = "../modules/sg"
-  sg_name = "${var.tag_prefix}-sg"
-  sg_desc = "Security Group"
+  source  = "github.com/flamarion/terraform-aws-sg?ref=v0.0.4"
+  name = "${var.owner}-tfe-demo-sg"
+  description = "Security Group"
   vpc_id  = var.vpc_id
-  tags = {
-    Name = "${var.tag_prefix}-sg"
+  sg_tags = {
+    Name = "${var.owner}-tfe-demo-sg"
   }
 
   sg_rules_cidr = var.sg_rules_cidr
@@ -31,26 +31,23 @@ data "template_file" "config_files" {
 }
 
 # Instance configuration
-resource "aws_instance" "tfe_instance" {
-  ami                    = var.ami_id
-  subnet_id              = var.subnet_id
-  instance_type          = var.instance_type
-  key_name               = var.key_name
-  user_data              = data.template_file.config_files.rendered
-  vpc_security_group_ids = [module.sg.sg_id]
-  iam_instance_profile   = aws_iam_instance_profile.tfe_profile.name
-
-  root_block_device {
-    volume_size = var.root_volume_size
+module "tfe_instance" {
+  source                      = "github.com/flamarion/terraform-aws-ec2?ref=v0.0.6"
+  ami                         = var.ami
+  subnet_id                   = var.subnet_id
+  instance_type               = var.instance_type
+  key_name                    = var.key_name
+  user_data                   = data.template_file.config_files.rendered
+  vpc_security_group_ids      = [module.sg.sg_id]
+  associate_public_ip_address = true
+  iam_instance_profile        = aws_iam_instance_profile.tfe_profile.name
+  root_volume_size            = 100
+  ec2_tags = {
+    Name = "${var.owner}-instance"
   }
-  tags = merge(
-    var.instance_tags,
-    {
-      Name = "${var.tag_prefix}-instance"
-    }
-  )
 }
 
+# IAM Role, Policy and Instance Profile 
 resource "aws_iam_role" "tfe_role" {
   name               = "tfe_role"
   assume_role_policy = <<EOF
@@ -105,18 +102,18 @@ resource "aws_iam_role_policy_attachment" "policy_attach" {
 
 # Load Balancer
 resource "aws_lb" "flamarion_lb" {
-  name               = "${var.tag_prefix}-lb"
+  name               = "${var.owner}-lb"
   load_balancer_type = "application"
   security_groups    = [module.sg.sg_id]
   subnets            = var.subnets
   tags = {
-    Name = "${var.tag_prefix}-lb"
+    Name = "${var.owner}-lb"
   }
 }
 
 # LB Target groups
 resource "aws_lb_target_group" "tfe_lb_tg_https" {
-  name                 = "${var.tag_prefix}-tg-${var.https_port}"
+  name                 = "${var.owner}-tg-${var.https_port}"
   port                 = var.https_port
   protocol             = var.https_proto
   vpc_id               = var.vpc_id
@@ -134,7 +131,7 @@ resource "aws_lb_target_group" "tfe_lb_tg_https" {
 }
 
 resource "aws_lb_target_group" "tfe_lb_tg_https_replicated" {
-  name                 = "${var.tag_prefix}-tg-${var.replicated_port}"
+  name                 = "${var.owner}-tg-${var.replicated_port}"
   port                 = var.replicated_port
   protocol             = var.https_proto
   vpc_id               = var.vpc_id
@@ -152,7 +149,7 @@ resource "aws_lb_target_group" "tfe_lb_tg_https_replicated" {
 }
 
 resource "aws_lb_target_group" "tfe_lb_tg_http" {
-  name                 = "${var.tag_prefix}-tg-${var.http_port}"
+  name                 = "${var.owner}-tg-${var.http_port}"
   port                 = var.http_port
   protocol             = var.http_proto
   vpc_id               = var.vpc_id
@@ -265,19 +262,19 @@ resource "aws_lb_listener_rule" "asg_http" {
 
 resource "aws_lb_target_group_attachment" "http_port" {
   target_group_arn = aws_lb_target_group.tfe_lb_tg_http.arn
-  target_id        = aws_instance.tfe_instance.id
+  target_id        = module.tfe_instance.instance_id[0]
   port             = var.http_port
 }
 
 resource "aws_lb_target_group_attachment" "https_port" {
   target_group_arn = aws_lb_target_group.tfe_lb_tg_https.arn
-  target_id        = aws_instance.tfe_instance.id
+  target_id        = module.tfe_instance.instance_id[0]
   port             = var.https_port
 }
 
 resource "aws_lb_target_group_attachment" "replicated_port" {
   target_group_arn = aws_lb_target_group.tfe_lb_tg_https_replicated.arn
-  target_id        = aws_instance.tfe_instance.id
+  target_id        = module.tfe_instance.instance_id[0]
   port             = var.replicated_port
 }
 

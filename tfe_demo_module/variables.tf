@@ -5,7 +5,7 @@ variable "region" {
   default     = "eu-central-1"
 }
 
-variable "tag_prefix" {
+variable "owner" {
   description = "Prefix for all tags and names"
   type        = string
   default     = "flamarion-tfe"
@@ -40,7 +40,7 @@ variable "instance_type" {
   default     = "m5.large"
 }
 
-variable "ami_id" {
+variable "ami" {
   description = "AMI id"
   type        = string
   default     = "ami-01f629e0600d93cef"
@@ -59,8 +59,8 @@ variable "root_volume_size" {
 
 variable "instance_tags" {
   description = "Extra tags"
-  type = map(string)
-  default = {}
+  type        = map(string)
+  default     = {}
 }
 
 
@@ -94,25 +94,15 @@ variable "https_proto" {
 variable "sg_rules_cidr" {
   description = "Security group rules"
   type = map(object({
-    description = string
-    type        = string
-    from_port   = number
-    to_port     = number
-    cidr_blocks = list(string)
-    protocol    = string
-    sg_id       = string
+    description       = string
+    type              = string
+    from_port         = number
+    to_port           = number
+    cidr_blocks       = list(string)
+    protocol          = string
+    security_group_id = string
   }))
-  default = {
-    ssh = {
-      description = "Terraform Cloud application via HTTP"
-      type        = "ingress"
-      cidr_blocks = ["0.0.0.0/0"]
-      from_port   = 0
-      to_port     = 0
-      protocol    = -1
-      sg_id       = "default"
-    }
-  }
+  default = {}
 }
 
 # App variables
