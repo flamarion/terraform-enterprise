@@ -3,6 +3,14 @@ provider "aws" {
 }
 
 terraform {
+
+  required_providers {
+    aws      = "~> 3.22"
+    template = "~> 2.2"
+    random   = "~> 3.0"
+  }
+  required_version = "~> 0.14"
+
   backend "remote" {
     organization = "FlamaCorp"
 
@@ -42,6 +50,7 @@ module "tfe_demo" {
   dns_record_name  = "flamarion-demo"
   admin_password   = "SuperS3cret"
   rel_seq          = var.rel_seq
+  rep_version      = ""
   sg_rules_cidr = {
     ssh = {
       description       = "SSH"

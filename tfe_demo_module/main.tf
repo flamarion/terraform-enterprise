@@ -1,15 +1,6 @@
-terraform {
-  required_providers {
-    aws      = "~> 2.59"
-    template = "~> 2.1"
-    random   = "~> 2.3"
-  }
-  required_version = "~> 0.12"
-}
-
 # Security Group
 module "sg" {
-  source  = "github.com/flamarion/terraform-aws-sg?ref=v0.0.4"
+  source  = "github.com/flamarion/terraform-aws-sg?ref=v0.0.5"
   name = "${var.owner}-tfe-demo-sg"
   description = "Security Group"
   vpc_id  = var.vpc_id
@@ -32,7 +23,7 @@ data "template_file" "config_files" {
 
 # Instance configuration
 module "tfe_instance" {
-  source                      = "github.com/flamarion/terraform-aws-ec2?ref=v0.0.6"
+  source                      = "github.com/flamarion/terraform-aws-ec2?ref=v0.0.7"
   ami                         = var.ami
   subnet_id                   = var.subnet_id
   instance_type               = var.instance_type
