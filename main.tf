@@ -50,7 +50,6 @@ module "tfe_demo" {
   dns_record_name  = "flamarion-demo"
   admin_password   = "SuperS3cret"
   rel_seq          = var.rel_seq
-  rep_version      = ""
   sg_rules_cidr = {
     ssh = {
       description       = "SSH"
