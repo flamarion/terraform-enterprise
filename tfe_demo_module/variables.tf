@@ -65,6 +65,18 @@ variable "instance_tags" {
 
 
 # Load Balance Ports
+variable "lb_arn" {
+  type = string
+}
+
+variable "lb_zone_id" {
+  type = string
+}
+
+variable "lb_dns_name" {
+  type = string
+}
+
 variable "http_port" {
   type    = number
   default = 80

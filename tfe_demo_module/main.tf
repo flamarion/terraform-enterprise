@@ -1,9 +1,9 @@
 # Security Group
 module "sg" {
-  source  = "github.com/flamarion/terraform-aws-sg?ref=v0.0.5"
-  name = "${var.owner}-tfe-demo-sg"
+  source      = "github.com/flamarion/terraform-aws-sg?ref=v0.0.5"
+  name        = "${var.owner}-tfe-demo-sg"
   description = "Security Group"
-  vpc_id  = var.vpc_id
+  vpc_id      = var.vpc_id
   sg_tags = {
     Name = "${var.owner}-tfe-demo-sg"
   }
@@ -91,17 +91,6 @@ resource "aws_iam_role_policy_attachment" "policy_attach" {
 }
 
 
-# Load Balancer
-resource "aws_lb" "flamarion_lb" {
-  name               = "${var.owner}-lb"
-  load_balancer_type = "application"
-  security_groups    = [module.sg.sg_id]
-  subnets            = var.subnets
-  tags = {
-    Name = "${var.owner}-lb"
-  }
-}
-
 # LB Target groups
 resource "aws_lb_target_group" "tfe_lb_tg_https" {
   name                 = "${var.owner}-tg-${var.https_port}"
@@ -166,7 +155,7 @@ data "aws_acm_certificate" "hashicorp_success" {
 
 # LB Listeners
 resource "aws_lb_listener" "tfe_listener_https" {
-  load_balancer_arn = aws_lb.flamarion_lb.arn
+  load_balancer_arn = var.lb_arn
   port              = var.https_port
   protocol          = var.https_proto
   certificate_arn   = data.aws_acm_certificate.hashicorp_success.arn
@@ -179,7 +168,7 @@ resource "aws_lb_listener" "tfe_listener_https" {
 }
 
 resource "aws_lb_listener" "tfe_listener_https_replicated" {
-  load_balancer_arn = aws_lb.flamarion_lb.arn
+  load_balancer_arn = var.lb_arn
   port              = var.replicated_port
   protocol          = var.https_proto
   certificate_arn   = data.aws_acm_certificate.hashicorp_success.arn
@@ -192,7 +181,7 @@ resource "aws_lb_listener" "tfe_listener_https_replicated" {
 }
 
 resource "aws_lb_listener" "tfe_listener_http" {
-  load_balancer_arn = aws_lb.flamarion_lb.arn
+  load_balancer_arn = var.lb_arn
   port              = var.http_port
   protocol          = var.http_proto
 
@@ -208,8 +197,8 @@ resource "aws_lb_listener_rule" "asg_https" {
   priority     = 100
 
   condition {
-    path_pattern {
-      values = ["*"]
+    host_header {
+      values = [aws_route53_record.flamarion.fqdn]
     }
   }
 
@@ -224,8 +213,8 @@ resource "aws_lb_listener_rule" "asg_https_replicated" {
   priority     = 101
 
   condition {
-    path_pattern {
-      values = ["*"]
+    host_header {
+      values = [aws_route53_record.flamarion.fqdn]
     }
   }
 
@@ -240,8 +229,8 @@ resource "aws_lb_listener_rule" "asg_http" {
   priority     = 102
 
   condition {
-    path_pattern {
-      values = ["*"]
+    host_header {
+      values = [aws_route53_record.flamarion.fqdn]
     }
   }
 
@@ -278,11 +267,11 @@ data "aws_route53_zone" "selected" {
 
 resource "aws_route53_record" "flamarion" {
   zone_id = data.aws_route53_zone.selected.id
-  name    = "${var.dns_record_name}.hashicorp-success.com"
+  name    = "${var.dns_record_name}.${data.aws_route53_zone.selected.name}"
   type    = "A"
   alias {
-    name                   = aws_lb.flamarion_lb.dns_name
-    zone_id                = aws_lb.flamarion_lb.zone_id
+    name                   = var.lb_dns_name
+    zone_id                = var.lb_zone_id
     evaluate_target_health = true
   }
 }

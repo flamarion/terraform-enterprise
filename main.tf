@@ -31,6 +31,17 @@ data "terraform_remote_state" "vpc" {
   }
 }
 
+data "terraform_remote_state" "lb" {
+  backend = "remote"
+
+  config = {
+    organization = "FlamaCorp"
+    workspaces = {
+      name = "tf-aws-lb"
+    }
+  }
+}
+
 resource "aws_key_pair" "tfe_key" {
   key_name   = "flamarion-tfe-demo"
   public_key = var.cloud_pub
@@ -50,6 +61,9 @@ module "tfe_demo" {
   dns_record_name  = "flamarion-demo"
   admin_password   = "SuperS3cret"
   rel_seq          = var.rel_seq
+  lb_arn           = data.terraform_remote_state.lb.outputs.lb_arn
+  lb_dns_name      = data.terraform_remote_state.lb.outputs.lb_dns_name
+  lb_zone_id       = data.terraform_remote_state.lb.outputs.lb_zone_id
   sg_rules_cidr = {
     ssh = {
       description       = "SSH"
