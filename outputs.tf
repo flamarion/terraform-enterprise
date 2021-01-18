@@ -1,15 +1,7 @@
 output "public_access" {
-  value = [
-    module.tfe_demo.public_ip,
-    module.tfe_demo.public_dns,
-    module.tfe_demo.lb_fqdn
-  ]
+  value = aws_route53_record.alias_record.fqdn
 }
 
-output "instance_id" {
-  value = module.tfe_demo.instance_id
-}
-
-output "sg_id" {
-  value = module.tfe_demo.sg_id
+output "instance_access" {
+  value = module.tfe_instance.public_dns
 }
