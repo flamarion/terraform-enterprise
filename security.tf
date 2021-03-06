@@ -18,15 +18,6 @@ module "sg" {
       protocol          = "tcp"
       security_group_id = module.sg.sg_id
     },
-    http = {
-      description       = "Terraform Cloud application via HTTP"
-      type              = "ingress"
-      cidr_blocks       = ["0.0.0.0/0"]
-      from_port         = var.http_port
-      to_port           = var.http_port
-      protocol          = "tcp"
-      security_group_id = module.sg.sg_id
-    },
     https = {
       description       = "Terraform Cloud application via HTTPS"
       type              = "ingress"
